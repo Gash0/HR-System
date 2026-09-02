@@ -25,6 +25,17 @@ from database import (
     get_hr_statistics
 )
 
+if not st.user.is_logged_in:
+    st.title("🔐 AI HR System")
+    st.subheader("Σύνδεση")
+    st.button("Σύνδεση με Google", on_click=st.login)
+    st.stop()
+
+st.sidebar.success(f"Συνδεδεμένος: {st.user.name}")
+
+if st.sidebar.button("Αποσύνδεση"):
+    st.logout()
+
 
 # ============================================================
 # ΡΥΘΜΙΣΕΙΣ ΣΕΛΙΔΑΣ
