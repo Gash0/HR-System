@@ -1134,29 +1134,382 @@ elif page == "👥 Employees":
     else:
         st.info("Δεν υπάρχουν εργαζόμενοι για επεξεργασία.")
 
-        # ----------------------------------------------------
-        # DELETE EMPLOYEE
-        # ----------------------------------------------------
+        # --------------------------------------------------------
+# EMPLOYEE PROFILE 2.0
+# --------------------------------------------------------
 
-        st.subheader("🗑️ Διαγραφή εργαζομένου")
+st.divider()
 
-        employee_options = {
-            f'{employee["first_name"]} '
-            f'{employee["last_name"]} '
-            f'(ID: {employee["id"]})': employee["id"]
-            for employee in employees
-        }
+st.subheader("👤 Employee Profile")
 
-        selected_employee = st.selectbox(
-            "Επίλεξε εργαζόμενο",
-            list(employee_options.keys()),
+if filtered_employees:
+
+    profile_options = {
+        f'{employee["first_name"]} '
+        f'{employee["last_name"]} '
+        f'— {employee["position"] or "Χωρίς θέση"} '
+        f'(ID: {employee["id"]})':
+        employee
+        for employee in filtered_employees
+    }
+
+    selected_profile = st.selectbox(
+        "Επίλεξε εργαζόμενο",
+        list(profile_options.keys()),
+        key="employee_profile_2"
+    )
+
+    employee = profile_options[selected_profile]
+
+    st.markdown(
+        f"## 👤 {employee['first_name']} "
+        f"{employee['last_name']}"
+    )
+
+    st.caption(
+        f"{employee['position'] or 'Χωρίς θέση'} • "
+        f"{employee['department'] or 'Χωρίς τμήμα'}"
+    )
+
+    # --------------------------------------------------------
+    # PROFILE KPIs
+    # --------------------------------------------------------
+
+    employee_leaves = [
+        leave
+        for leave in get_leaves()
+        if leave["employee_id"] == employee["id"]
+    ]
+
+    employee_onboarding = [
+        item
+        for item in get_onboarding()
+        if item["employee_id"] == employee["id"]
+    ]
+
+    approved_leaves = sum(
+        1
+        for leave in employee_leaves
+        if leave["status"] == "Εγκρίθηκε"
+    )
+
+    pending_leaves = sum(
+        1
+        for leave in employee_leaves
+        if leave["status"] == "Εκκρεμεί"
+    )
+
+    col1, col2, col3, col4 = st.columns(4)
+
+    with col1:
+        st.metric(
+            "📌 Κατάσταση",
+            employee["status"] or "-"
         )
 
-        if st.button("🗑️ Διαγραφή", type="secondary"):
-            employee_id = employee_options[selected_employee]
-            delete_employee(employee_id)
-            st.success("✅ Ο εργαζόμενος διαγράφηκε.")
-            st.rerun()
+    with col2:
+        st.metric(
+            "🏖️ Σύνολο αδειών",
+            len(employee_leaves)
+        )
+
+    with col3:
+        st.metric(
+            "✅ Εγκεκριμένες",
+            approved_leaves
+        )
+
+    with col4:
+        st.metric(
+            "⏳ Εκκρεμείς",
+            pending_leaves
+        )
+
+    st.divider()
+
+    # --------------------------------------------------------
+    # TABS
+    # --------------------------------------------------------
+
+    tab1, tab2, tab3, tab4 = st.tabs(
+        [
+            "👤 Στοιχεία",
+            "🏖️ Άδειες",
+            "🚀 Onboarding",
+            "📋 Ιστορικό"
+        ]
+    )
+
+    # ========================================================
+    # TAB 1 - DETAILS
+    # ========================================================
+
+    with tab1:
+
+        st.subheader("👤 Προσωπικά & εργασιακά στοιχεία")
+
+        col1, col2 = st.columns(2)
+
+        with col1:
+
+            st.write(
+                "**Όνομα:**",
+                employee["first_name"] or "-"
+            )
+
+            st.write(
+                "**Επώνυμο:**",
+                employee["last_name"] or "-"
+            )
+
+            st.write(
+                "**Email:**",
+                employee["email"] or "-"
+            )
+
+            st.write(
+                "**Τηλέφωνο:**",
+                employee["phone"] or "-"
+            )
+
+        with col2:
+
+            st.write(
+                "**Θέση:**",
+                employee["position"] or "-"
+            )
+
+            st.write(
+                "**Τμήμα:**",
+                employee["department"] or "-"
+            )
+
+            st.write(
+                "**Ημερομηνία πρόσληψης:**",
+                employee["hire_date"] or "-"
+            )
+
+            st.write(
+                "**Κατάσταση:**",
+                employee["status"] or "-"
+            )
+
+    # ========================================================
+    # TAB 2 - LEAVES
+    # ========================================================
+
+    with tab2:
+
+        st.subheader("🏖️ Ιστορικό αδειών")
+
+        if employee_leaves:
+
+            leave_data = []
+
+            for leave in employee_leaves:
+
+                leave_data.append(
+                    {
+                        "Τύπος":
+                            leave["leave_type"],
+                        "Από":
+                            leave["start_date"],
+                        "Έως":
+                            leave["end_date"],
+                        "Αιτιολογία":
+                            leave["reason"] or "-",
+                        "Κατάσταση":
+                            leave["status"],
+                    }
+                )
+
+            st.dataframe(
+                pd.DataFrame(leave_data),
+                use_container_width=True,
+                hide_index=True
+            )
+
+        else:
+
+            st.info(
+                "Δεν υπάρχουν άδειες για αυτόν τον εργαζόμενο."
+            )
+
+    # ========================================================
+    # TAB 3 - ONBOARDING
+    # ========================================================
+
+    with tab3:
+
+        st.subheader("🚀 Onboarding")
+
+        if employee_onboarding:
+
+            for item in employee_onboarding:
+
+                completed_tasks = sum(
+                    [
+                        bool(item["contract"]),
+                        bool(item["documents"]),
+                        bool(item["email"]),
+                        bool(item["equipment"]),
+                        bool(item["system_access"]),
+                        bool(item["training"]),
+                        bool(item["manager_meeting"]),
+                    ]
+                )
+
+                total_tasks = 7
+
+                completion = (
+                    completed_tasks / total_tasks
+                ) * 100
+
+                st.write(
+                    f"**Ημερομηνία έναρξης:** "
+                    f"{item['start_date'] or '-'}"
+                )
+
+                st.progress(
+                    completion / 100
+                )
+
+                st.write(
+                    f"**Ολοκλήρωση:** "
+                    f"{completed_tasks}/{total_tasks} "
+                    f"({completion:.0f}%)"
+                )
+
+                col1, col2 = st.columns(2)
+
+                with col1:
+
+                    st.write(
+                        f"📄 Σύμβαση: "
+                        f"{'✅' if item['contract'] else '❌'}"
+                    )
+
+                    st.write(
+                        f"📁 Έγγραφα: "
+                        f"{'✅' if item['documents'] else '❌'}"
+                    )
+
+                    st.write(
+                        f"📧 Email: "
+                        f"{'✅' if item['email'] else '❌'}"
+                    )
+
+                    st.write(
+                        f"💻 Εξοπλισμός: "
+                        f"{'✅' if item['equipment'] else '❌'}"
+                    )
+
+                with col2:
+
+                    st.write(
+                        f"🔐 Πρόσβαση: "
+                        f"{'✅' if item['system_access'] else '❌'}"
+                    )
+
+                    st.write(
+                        f"🎓 Εκπαίδευση: "
+                        f"{'✅' if item['training'] else '❌'}"
+                    )
+
+                    st.write(
+                        f"🤝 Manager meeting: "
+                        f"{'✅' if item['manager_meeting'] else '❌'}"
+                    )
+
+                st.divider()
+
+        else:
+
+            st.info(
+                "Δεν υπάρχει onboarding για αυτόν τον εργαζόμενο."
+            )
+
+    # ========================================================
+    # TAB 4 - HISTORY
+    # ========================================================
+
+    with tab4:
+
+        st.subheader("📋 Ιστορικό εργαζομένου")
+
+        st.write(
+            f"📅 **Ημερομηνία πρόσληψης:** "
+            f"{employee['hire_date'] or '-'}"
+        )
+
+        st.write(
+            f"🏢 **Τμήμα:** "
+            f"{employee['department'] or '-'}"
+        )
+
+        st.write(
+            f"💼 **Θέση:** "
+            f"{employee['position'] or '-'}"
+        )
+
+        st.write(
+            f"📌 **Τρέχουσα κατάσταση:** "
+            f"{employee['status'] or '-'}"
+        )
+
+        st.divider()
+
+        st.write(
+            f"🏖️ **Αιτήματα άδειας:** "
+            f"{len(employee_leaves)}"
+        )
+
+        st.write(
+            f"✅ **Εγκεκριμένες άδειες:** "
+            f"{approved_leaves}"
+        )
+
+        st.write(
+            f"⏳ **Εκκρεμή αιτήματα:** "
+            f"{pending_leaves}"
+        )
+
+        st.write(
+            f"🚀 **Onboarding:** "
+            f"{'Υπάρχει' if employee_onboarding else 'Δεν υπάρχει'}"
+        )
+
+else:
+
+    st.info(
+        "Δεν υπάρχει διαθέσιμος εργαζόμενος για προβολή."
+    )
+
+# ----------------------------------------------------
+# DELETE EMPLOYEE
+# ----------------------------------------------------
+
+if employees:
+
+    st.subheader("🗑️ Διαγραφή εργαζομένου")
+
+    employee_options = {
+        f'{employee["first_name"]} '
+        f'{employee["last_name"]} '
+        f'(ID: {employee["id"]})': employee["id"]
+        for employee in employees
+    }
+
+    selected_employee = st.selectbox(
+        "Επίλεξε εργαζόμενο",
+        list(employee_options.keys()),
+    )
+
+    if st.button("🗑️ Διαγραφή", type="secondary"):
+        employee_id = employee_options[selected_employee]
+        delete_employee(employee_id)
+        st.success("✅ Ο εργαζόμενος διαγράφηκε.")
+        st.rerun()
 
 else:
 
