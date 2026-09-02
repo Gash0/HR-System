@@ -10,7 +10,8 @@ from psycopg.rows import dict_row
 def get_connection():
     return psycopg.connect(
         st.secrets["database"]["url"],
-        row_factory=dict_row
+        row_factory=dict_row,
+        connect_timeout=10
     )
 
 
