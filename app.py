@@ -39,9 +39,12 @@ if not st.user.is_logged_in:
 user_email = st.user.email
 
 admin_emails = st.secrets["roles"]["admin_emails"]
+hr_emails = st.secrets["roles"]["hr_emails"]
 
 if user_email in admin_emails:
     user_role = "Admin"
+elif user_email in hr_emails:
+    user_role = "HR"
 else:
     user_role = "Employee"
 
@@ -90,9 +93,8 @@ create_leave_table()
 st.sidebar.title("🤖 AI HR System")
 st.sidebar.markdown("---")
 
-page = st.sidebar.radio(
-    "Μενού",
-    [
+if user_role in ["Admin", "HR"]:
+    menu_options = [
         "📊 Dashboard",
         "👥 Εργαζόμενοι",
         "📋 Recruitment",
@@ -100,7 +102,19 @@ page = st.sidebar.radio(
         "🏖️ Άδειες",
         "🤖 AI Assistant"
     ]
+else:
+    menu_options = [
+        "👤 Το προφίλ μου",
+        "🏖️ Οι άδειές μου",
+        "🤖 AI Assistant"
+    ]
+
+menu = st.sidebar.radio(
+    "Μενού",
+    menu_options
 )
+
+page = menu
 
 st.sidebar.markdown("---")
 st.sidebar.caption("AI HR Management System")
