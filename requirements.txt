@@ -3,3 +3,4 @@ pandas
 openai
 python-dotenv
 Authlib>=1.3.2
+psycopg[binary]

@@ -1,14 +1,32 @@
+import streamlit as st
+import psycopg
+from psycopg.rows import dict_row
 
-import sqlite3
 
-DATABASE_NAME = "hr_system.db"
-
+# ==========================================
+# DATABASE CONNECTION
+# ==========================================
 
 def get_connection():
-    connection = sqlite3.connect(DATABASE_NAME)
-    connection.row_factory = sqlite3.Row
-    return connection
+    return psycopg.connect(
+        st.secrets["database"]["url"],
+        row_factory=dict_row
+    )
 
+
+# ==========================================
+# TEST CONNECTION
+# ==========================================
+
+def test_postgres_connection():
+    connection = get_connection()
+    connection.close()
+    return True
+
+
+# ==========================================
+# EMPLOYEES
+# ==========================================
 
 def create_tables():
     connection = get_connection()
@@ -16,10 +34,10 @@ def create_tables():
 
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS employees (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id SERIAL PRIMARY KEY,
             first_name TEXT NOT NULL,
             last_name TEXT NOT NULL,
-            email TEXT,
+            email TEXT UNIQUE,
             phone TEXT,
             position TEXT,
             department TEXT,
@@ -40,7 +58,7 @@ def add_employee(
     position,
     department,
     hire_date,
-    status="Ενεργός"
+    status
 ):
     connection = get_connection()
     cursor = connection.cursor()
@@ -56,7 +74,7 @@ def add_employee(
             hire_date,
             status
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
     """, (
         first_name,
         last_name,
@@ -85,25 +103,50 @@ def get_employees():
     employees = cursor.fetchall()
 
     connection.close()
-
     return employees
+
+
+def get_employee_by_email(email):
+    connection = get_connection()
+    cursor = connection.cursor()
+
+    cursor.execute("""
+        SELECT *
+        FROM employees
+        WHERE email = %s
+        LIMIT 1
+    """, (email,))
+
+    employee = cursor.fetchone()
+
+    connection.close()
+    return employee
 
 
 def delete_employee(employee_id):
     connection = get_connection()
     cursor = connection.cursor()
 
-    cursor.execute(
-        "DELETE FROM employees WHERE id = ?",
-        (employee_id,)
-    )
+    cursor.execute("""
+        DELETE FROM employees
+        WHERE id = %s
+    """, (employee_id,))
+
+    connection.commit()
+    connection.close()
+
+
+# ==========================================
+# RECRUITMENT
+# ==========================================
+
 def create_recruitment_table():
     connection = get_connection()
     cursor = connection.cursor()
 
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS candidates (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id SERIAL PRIMARY KEY,
             first_name TEXT NOT NULL,
             last_name TEXT NOT NULL,
             email TEXT,
@@ -140,7 +183,7 @@ def add_candidate(
             application_date,
             status
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?)
+        VALUES (%s, %s, %s, %s, %s, %s, %s)
     """, (
         first_name,
         last_name,
@@ -168,9 +211,12 @@ def get_candidates():
     candidates = cursor.fetchall()
 
     connection.close()
-
     return candidates
 
+
+# ==========================================
+# ONBOARDING
+# ==========================================
 
 def create_onboarding_table():
     connection = get_connection()
@@ -178,7 +224,7 @@ def create_onboarding_table():
 
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS onboarding (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id SERIAL PRIMARY KEY,
             employee_id INTEGER NOT NULL,
             contract INTEGER DEFAULT 0,
             documents INTEGER DEFAULT 0,
@@ -188,7 +234,9 @@ def create_onboarding_table():
             training INTEGER DEFAULT 0,
             manager_meeting INTEGER DEFAULT 0,
             start_date TEXT,
-            FOREIGN KEY (employee_id) REFERENCES employees(id)
+            FOREIGN KEY (employee_id)
+                REFERENCES employees(id)
+                ON DELETE CASCADE
         )
     """)
 
@@ -205,7 +253,7 @@ def create_onboarding(employee_id, start_date):
             employee_id,
             start_date
         )
-        VALUES (?, ?)
+        VALUES (%s, %s)
     """, (
         employee_id,
         start_date
@@ -226,14 +274,13 @@ def get_onboarding():
             employees.last_name
         FROM onboarding
         JOIN employees
-        ON onboarding.employee_id = employees.id
+            ON onboarding.employee_id = employees.id
         ORDER BY onboarding.id DESC
     """)
 
     onboarding = cursor.fetchall()
 
     connection.close()
-
     return onboarding
 
 
@@ -253,14 +300,14 @@ def update_onboarding(
     cursor.execute("""
         UPDATE onboarding
         SET
-            contract = ?,
-            documents = ?,
-            email = ?,
-            equipment = ?,
-            system_access = ?,
-            training = ?,
-            manager_meeting = ?
-        WHERE id = ?
+            contract = %s,
+            documents = %s,
+            email = %s,
+            equipment = %s,
+            system_access = %s,
+            training = %s,
+            manager_meeting = %s
+        WHERE id = %s
     """, (
         contract,
         documents,
@@ -275,20 +322,27 @@ def update_onboarding(
     connection.commit()
     connection.close()
 
+
+# ==========================================
+# LEAVES
+# ==========================================
+
 def create_leave_table():
     connection = get_connection()
     cursor = connection.cursor()
 
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS leaves (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id SERIAL PRIMARY KEY,
             employee_id INTEGER NOT NULL,
             leave_type TEXT NOT NULL,
             start_date TEXT NOT NULL,
             end_date TEXT NOT NULL,
             reason TEXT,
             status TEXT DEFAULT 'Εκκρεμεί',
-            FOREIGN KEY (employee_id) REFERENCES employees(id)
+            FOREIGN KEY (employee_id)
+                REFERENCES employees(id)
+                ON DELETE CASCADE
         )
     """)
 
@@ -316,7 +370,7 @@ def add_leave(
             reason,
             status
         )
-        VALUES (?, ?, ?, ?, ?, ?)
+        VALUES (%s, %s, %s, %s, %s, %s)
     """, (
         employee_id,
         leave_type,
@@ -341,14 +395,13 @@ def get_leaves():
             employees.last_name
         FROM leaves
         JOIN employees
-        ON leaves.employee_id = employees.id
+            ON leaves.employee_id = employees.id
         ORDER BY leaves.id DESC
     """)
 
     leaves = cursor.fetchall()
 
     connection.close()
-
     return leaves
 
 
@@ -358,8 +411,8 @@ def update_leave_status(leave_id, status):
 
     cursor.execute("""
         UPDATE leaves
-        SET status = ?
-        WHERE id = ?
+        SET status = %s
+        WHERE id = %s
     """, (
         status,
         leave_id
@@ -369,67 +422,9 @@ def update_leave_status(leave_id, status):
     connection.close()
 
 
-def get_hr_statistics():
-    connection = get_connection()
-    cursor = connection.cursor()
-
-    cursor.execute("""
-        SELECT COUNT(*) AS total
-        FROM employees
-    """)
-    total_employees = cursor.fetchone()["total"]
-
-    cursor.execute("""
-        SELECT COUNT(*) AS active
-        FROM employees
-        WHERE status = 'Ενεργός'
-    """)
-    active_employees = cursor.fetchone()["active"]
-
-    cursor.execute("""
-        SELECT COUNT(*) AS inactive
-        FROM employees
-        WHERE status = 'Ανενεργός'
-    """)
-    inactive_employees = cursor.fetchone()["inactive"]
-
-    cursor.execute("""
-        SELECT COUNT(*) AS total
-        FROM candidates
-    """)
-    total_candidates = cursor.fetchone()["total"]
-
-    cursor.execute("""
-        SELECT COUNT(*) AS hired
-        FROM candidates
-        WHERE status = 'Προσλήφθηκε'
-    """)
-    hired_candidates = cursor.fetchone()["hired"]
-
-    cursor.execute("""
-        SELECT COUNT(*) AS total
-        FROM leaves
-    """)
-    total_leaves = cursor.fetchone()["total"]
-
-    cursor.execute("""
-        SELECT COUNT(*) AS pending
-        FROM leaves
-        WHERE status = 'Εκκρεμεί'
-    """)
-    pending_leaves = cursor.fetchone()["pending"]
-
-    connection.close()
-
-    return {
-        "total_employees": total_employees,
-        "active_employees": active_employees,
-        "inactive_employees": inactive_employees,
-        "total_candidates": total_candidates,
-        "hired_candidates": hired_candidates,
-        "total_leaves": total_leaves,
-        "pending_leaves": pending_leaves
-    }
+# ==========================================
+# HR STATISTICS
+# ==========================================
 
 def get_hr_statistics():
     connection = get_connection()
@@ -492,18 +487,3 @@ def get_hr_statistics():
         "total_leaves": total_leaves,
         "pending_leaves": pending_leaves
     }
-
-def get_employee_by_email(email):
-    connection = get_connection()
-    cursor = connection.cursor()
-
-    cursor.execute(
-        "SELECT * FROM employees WHERE email = ?",
-        (email,)
-    )
-
-    employee = cursor.fetchone()
-
-    connection.close()
-
-    return employee
