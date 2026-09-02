@@ -492,3 +492,18 @@ def get_hr_statistics():
         "total_leaves": total_leaves,
         "pending_leaves": pending_leaves
     }
+
+def get_employee_by_email(email):
+    connection = get_connection()
+    cursor = connection.cursor()
+
+    cursor.execute(
+        "SELECT * FROM employees WHERE email = ?",
+        (email,)
+    )
+
+    employee = cursor.fetchone()
+
+    connection.close()
+
+    return employee

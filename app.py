@@ -11,6 +11,7 @@ from database import (
     add_employee,
     get_employees,
     delete_employee,
+    get_employee_by_email,
     create_recruitment_table,
     add_candidate,
     get_candidates,
@@ -202,6 +203,72 @@ if page == "📊 Dashboard":
         )
 
     st.markdown("---")
+
+elif page == "👤 Το προφίλ μου":
+    st.title("👤 Το προφίλ μου")
+
+    employee = get_employee_by_email(user_email)
+
+    if employee is None:
+        st.warning(
+            "Δεν βρέθηκε εργαζόμενος με αυτό το Google email. "
+            "Παρακαλώ επικοινώνησε με το HR."
+        )
+    else:
+        col1, col2 = st.columns(2)
+
+        with col1:
+            st.write("**Όνομα:**", employee["first_name"])
+            st.write("**Επώνυμο:**", employee["last_name"])
+            st.write("**Email:**", employee["email"])
+            st.write("**Τηλέφωνο:**", employee["phone"])
+
+        with col2:
+            st.write("**Θέση:**", employee["position"])
+            st.write("**Τμήμα:**", employee["department"])
+            st.write("**Ημερομηνία πρόσληψης:**", employee["hire_date"])
+            st.write("**Κατάσταση:**", employee["status"])
+
+elif page == "🏖️ Οι άδειές μου":
+    st.title("🏖️ Οι άδειές μου")
+
+    employee = get_employee_by_email(user_email)
+
+    if employee is None:
+        st.warning(
+            "Δεν βρέθηκε ο εργαζόμενος. "
+            "Επικοινώνησε με το HR."
+        )
+    else:
+        leaves = get_leaves()
+
+        my_leaves = [
+            leave for leave in leaves
+            if leave["employee_id"] == employee["id"]
+        ]
+
+        if not my_leaves:
+            st.info("Δεν υπάρχουν καταχωρημένες άδειες.")
+        else:
+            for leave in my_leaves:
+                st.divider()
+
+                st.write(
+                    f"**Τύπος άδειας:** {leave['leave_type']}"
+                )
+
+                st.write(
+                    f"**Από:** {leave['start_date']} "
+                    f"**Έως:** {leave['end_date']}"
+                )
+
+                st.write(
+                    f"**Αιτιολογία:** {leave['reason'] or '-'}"
+                )
+
+                st.write(
+                    f"**Κατάσταση:** {leave['status']}"
+                )
 
     # --------------------------------------------------------
     # EMPLOYEE ANALYTICS
