@@ -240,6 +240,56 @@ elif page == "👤 Το προφίλ μου":
             st.write("**Κατάσταση:**", employee["status"])
 
 elif page == "🏖️ Οι άδειές μου":
+    st.divider()
+
+st.subheader("➕ Νέο αίτημα άδειας")
+
+with st.form("leave_request_form"):
+    leave_type = st.selectbox(
+        "Τύπος άδειας",
+        [
+            "Κανονική",
+            "Αναρρωτική",
+            "Άδεια άνευ αποδοχών",
+            "Ειδική"
+        ]
+    )
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        start_date = st.date_input("Ημερομηνία έναρξης")
+
+    with col2:
+        end_date = st.date_input("Ημερομηνία λήξης")
+
+    reason = st.text_area("Αιτιολογία")
+
+    submitted = st.form_submit_button("📤 Υποβολή αιτήματος")
+
+    if submitted:
+        if employee is None:
+            st.error("Δεν βρέθηκε ο εργαζόμενος.")
+        elif end_date < start_date:
+            st.error(
+                "Η ημερομηνία λήξης δεν μπορεί να είναι "
+                "πριν από την ημερομηνία έναρξης."
+            )
+        else:
+            add_leave(
+                employee["id"],
+                leave_type,
+                start_date,
+                end_date,
+                reason,
+                "Εκκρεμεί"
+            )
+
+            st.success(
+                "✅ Το αίτημα άδειας υποβλήθηκε επιτυχώς."
+            )
+
+            st.rerun()
     st.title("🏖️ Οι άδειές μου")
 
     employee = get_employee_by_email(user_email)
@@ -340,7 +390,7 @@ elif page == "🏖️ Οι άδειές μου":
 # ΕΡΓΑΖΟΜΕΝΟΙ
 # ============================================================
 
-elif page == "👥 Εργαζόμενοι":
+if page == "👥 Εργαζόμενοι":
 
     st.title("👥 Διαχείριση Εργαζομένων")
 
