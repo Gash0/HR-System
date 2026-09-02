@@ -854,11 +854,105 @@ elif page == "👥 Εργαζόμενοι":
     # EMPLOYEE LIST
     # --------------------------------------------------------
 
-    st.subheader(
-        "📋 Λίστα εργαζομένων"
+    st.subheader("📋 Λίστα εργαζομένων")
+
+employees = get_employees()
+
+if page == "👥 Employees" and employees:
+
+    search_text = st.text_input(
+        "🔎 Αναζήτηση εργαζομένου",
+        placeholder="Όνομα, επώνυμο ή email..."
     )
 
-    employees = get_employees()
+    department_filter = st.selectbox(
+        "🏢 Φίλτρο τμήματος",
+        ["Όλα"] + sorted(
+            {
+                employee["department"]
+                for employee in employees
+                if employee.get("department")
+            }
+        )
+    )
+
+    status_filter = st.selectbox(
+        "📌 Φίλτρο κατάστασης",
+        [
+            "Όλες",
+            "Ενεργός",
+            "Ανενεργός",
+            "Σε άδεια"
+        ]
+    )
+
+    filtered_employees = employees
+
+    if search_text:
+        search_lower = search_text.lower()
+
+        filtered_employees = [
+            employee
+            for employee in filtered_employees
+            if search_lower in (
+                employee.get("first_name") or ""
+            ).lower()
+            or search_lower in (
+                employee.get("last_name") or ""
+            ).lower()
+            or search_lower in (
+                employee.get("email") or ""
+            ).lower()
+        ]
+
+    if department_filter != "Όλα":
+        filtered_employees = [
+            employee
+            for employee in filtered_employees
+            if employee.get("department") == department_filter
+        ]
+
+    if status_filter != "Όλες":
+        filtered_employees = [
+            employee
+            for employee in filtered_employees
+            if employee.get("status") == status_filter
+        ]
+
+    st.caption(
+        f"Βρέθηκαν {len(filtered_employees)} εργαζόμενοι."
+    )
+
+    employee_data = []
+
+    for employee in filtered_employees:
+
+        employee_data.append(
+            {
+                "ID": employee["id"],
+                "Όνομα": employee["first_name"],
+                "Επώνυμο": employee["last_name"],
+                "Email": employee["email"],
+                "Τηλέφωνο": employee["phone"],
+                "Θέση": employee["position"],
+                "Τμήμα": employee["department"],
+                "Ημερομηνία πρόσληψης":
+                    employee["hire_date"],
+                "Κατάσταση": employee["status"],
+            }
+        )
+
+    df = pd.DataFrame(employee_data)
+
+    st.dataframe(
+        df,
+        use_container_width=True,
+        hide_index=True,
+    )
+
+elif page == "👥 Employees":
+
+    st.info("Δεν υπάρχουν εργαζόμενοι.")
 
     if employees:
 
