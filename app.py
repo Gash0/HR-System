@@ -136,6 +136,136 @@ st.sidebar.caption("AI HR Management System")
 # ============================================================
 
 if page == "📊 Dashboard":
+    st.title("📊 HR Dashboard")
+    st.caption("Επισκόπηση ανθρώπινου δυναμικού")
+
+    # -----------------------------
+    # LOAD DATA
+    # -----------------------------
+    stats = get_hr_statistics()
+    employees = get_employees()
+    candidates = get_candidates()
+    leaves = get_leaves()
+
+    # -----------------------------
+    # KPI CARDS
+    # -----------------------------
+    col1, col2, col3, col4 = st.columns(4)
+
+    with col1:
+        st.metric(
+            "👥 Σύνολο εργαζομένων",
+            stats["total_employees"]
+        )
+
+    with col2:
+        st.metric(
+            "✅ Ενεργοί εργαζόμενοι",
+            stats["active_employees"]
+        )
+
+    with col3:
+        st.metric(
+            "📋 Υποψήφιοι",
+            stats["total_candidates"]
+        )
+
+    with col4:
+        st.metric(
+            "🏖️ Εκκρεμή αιτήματα",
+            stats["pending_leaves"]
+        )
+
+    st.divider()
+
+    # -----------------------------
+    # EMPLOYEES BY DEPARTMENT
+    # -----------------------------
+    st.subheader("👥 Εργαζόμενοι ανά τμήμα")
+
+    if employees:
+        departments = pd.DataFrame(employees)
+
+        if "department" in departments.columns:
+            department_counts = (
+                departments["department"]
+                .fillna("Χωρίς τμήμα")
+                .value_counts()
+            )
+
+            st.bar_chart(department_counts)
+
+    else:
+        st.info("Δεν υπάρχουν εργαζόμενοι.")
+
+    # -----------------------------
+    # RECRUITMENT
+    # -----------------------------
+    st.subheader("📋 Recruitment")
+
+    if candidates:
+        candidate_df = pd.DataFrame(candidates)
+
+        if "status" in candidate_df.columns:
+            recruitment_counts = (
+                candidate_df["status"]
+                .fillna("Άγνωστη κατάσταση")
+                .value_counts()
+            )
+
+            st.bar_chart(recruitment_counts)
+
+    else:
+        st.info("Δεν υπάρχουν υποψήφιοι.")
+
+    # -----------------------------
+    # LEAVE REQUESTS
+    # -----------------------------
+    st.subheader("🏖️ Αιτήματα άδειας")
+
+    if leaves:
+        leave_df = pd.DataFrame(leaves)
+
+        if "status" in leave_df.columns:
+            leave_counts = (
+                leave_df["status"]
+                .fillna("Άγνωστη κατάσταση")
+                .value_counts()
+            )
+
+            st.bar_chart(leave_counts)
+
+    else:
+        st.info("Δεν υπάρχουν αιτήματα άδειας.")
+
+    # -----------------------------
+    # EMPLOYEE TABLE
+    # -----------------------------
+    st.subheader("👤 Πρόσφατοι εργαζόμενοι")
+
+    if employees:
+        employee_df = pd.DataFrame(employees)
+
+        columns_to_show = [
+            column
+            for column in [
+                "first_name",
+                "last_name",
+                "email",
+                "position",
+                "department",
+                "status"
+            ]
+            if column in employee_df.columns
+        ]
+
+        st.dataframe(
+            employee_df[columns_to_show].head(10),
+            use_container_width=True,
+            hide_index=True
+        )
+    else:
+        st.info("Δεν υπάρχουν εργαζόμενοι.")
 
     st.title("📊 HR Dashboard")
     st.markdown("Κεντρική εικόνα του τμήματος Ανθρώπινου Δυναμικού.")
