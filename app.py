@@ -81,10 +81,16 @@ if api_key:
 else:
     client = None
 
-create_tables()
-create_recruitment_table()
-create_onboarding_table()
-create_leave_table()
+@st.cache_resource
+def initialize_database():
+    create_tables()
+    create_recruitment_table()
+    create_onboarding_table()
+    create_leave_table()
+    return True
+
+
+initialize_database()
 
 
 # ============================================================
