@@ -49,6 +49,10 @@ elif user_email in hr_emails:
 else:
     user_role = "Employee"
 
+    IS_ADMIN = user_role == "Admin"
+IS_HR = user_role in ["Admin", "HR"]
+IS_EMPLOYEE = user_role == "Employee"
+
 
 st.sidebar.success(f"👤 {st.user.name}")
 st.sidebar.info(f"Ρόλος: {user_role}")
@@ -100,7 +104,7 @@ initialize_database()
 st.sidebar.title("🤖 AI HR System")
 st.sidebar.markdown("---")
 
-if user_role in ["Admin", "HR"]:
+if IS_HR:
     menu_options = [
         "📊 Dashboard",
         "👥 Εργαζόμενοι",
