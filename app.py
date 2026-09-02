@@ -25,6 +25,8 @@ from database import (
     get_leaves,
     update_leave_status,
     get_hr_statistics,
+    update_employee,
+
 )
 
 
@@ -987,19 +989,161 @@ elif page == "👥 Employees":
 
         st.divider()
 
+        st.divider()
+
+    st.subheader("👁️ Προβολή / ✏️ Επεξεργασία εργαζομένου")
+
+    if filtered_employees:
+
+            employee_profile_options = {
+        f'{employee["first_name"]} '
+        f'{employee["last_name"]} '
+        f'(ID: {employee["id"]})':
+        employee
+        for employee in filtered_employees
+    }
+
+            selected_profile_name = st.selectbox(
+        "Επίλεξε εργαζόμενο",
+        list(employee_profile_options.keys()),
+        key="employee_profile_selector"
+    )
+
+            selected_employee = employee_profile_options[
+        selected_profile_name
+    ]
+
+            with st.expander("📄 Στοιχεία εργαζομένου", expanded=True):
+
+                with st.form(
+                    f"edit_employee_{selected_employee['id']}"
+                ):
+
+                    col1, col2 = st.columns(2)
+
+            with col1:
+
+                edit_first_name = st.text_input(
+                    "Όνομα",
+                    value=selected_employee["first_name"] or ""
+                )
+
+                edit_last_name = st.text_input(
+                    "Επώνυμο",
+                    value=selected_employee["last_name"] or ""
+                )
+
+                edit_email = st.text_input(
+                    "Email",
+                    value=selected_employee["email"] or ""
+                )
+
+                edit_phone = st.text_input(
+                    "Τηλέφωνο",
+                    value=selected_employee["phone"] or ""
+                )
+
+            with col2:
+
+                edit_position = st.text_input(
+                    "Θέση",
+                    value=selected_employee["position"] or ""
+                )
+
+                edit_department = st.text_input(
+                    "Τμήμα",
+                    value=selected_employee["department"] or ""
+                )
+
+                edit_hire_date = st.text_input(
+                    "Ημερομηνία πρόσληψης",
+                    value=selected_employee["hire_date"] or ""
+                )
+
+                edit_status = st.selectbox(
+                    "Κατάσταση",
+                    [
+                        "Ενεργός",
+                        "Ανενεργός",
+                        "Σε άδεια"
+                    ],
+                    index=[
+                        "Ενεργός",
+                        "Ανενεργός",
+                        "Σε άδεια"
+                    ].index(
+                        selected_employee["status"]
+                    )
+                    if selected_employee["status"] in [
+                        "Ενεργός",
+                        "Ανενεργός",
+                        "Σε άδεια"
+                    ]
+                    else 0
+                )
+
+            save_changes = st.form_submit_button(
+                "💾 Αποθήκευση αλλαγών"
+            )
+
+            if save_changes:
+
+                if not edit_first_name or not edit_last_name:
+                    st.error(
+                        "Το Όνομα και το Επώνυμο είναι υποχρεωτικά."
+                    )
+
+                else:
+
+                    try:
+
+                        update_employee(
+                            selected_employee["id"],
+                            edit_first_name,
+                            edit_last_name,
+                            edit_email,
+                            edit_phone,
+                            edit_position,
+                            edit_department,
+                            edit_hire_date,
+                            edit_status
+                        )
+
+                        st.success(
+                            "✅ Τα στοιχεία ενημερώθηκαν επιτυχώς."
+                        )
+
+                        st.rerun()
+
+                    except Exception as e:
+
+                        if (
+                            "UniqueViolation" in str(e)
+                            or "duplicate key" in str(e).lower()
+                        ):
+                            st.error(
+                                "❌ Υπάρχει ήδη εργαζόμενος "
+                                "με αυτό το email."
+                            )
+
+                        else:
+                            st.error(
+                                f"❌ Σφάλμα ενημέρωσης: {e}"
+                            )
+
+    else:
+        st.info("Δεν υπάρχουν εργαζόμενοι για επεξεργασία.")
+
         # ----------------------------------------------------
         # DELETE EMPLOYEE
         # ----------------------------------------------------
 
-        st.subheader(
-            "🗑️ Διαγραφή εργαζομένου"
-        )
+        st.subheader("🗑️ Διαγραφή εργαζομένου")
 
         employee_options = {
             f'{employee["first_name"]} '
             f'{employee["last_name"]} '
-            f'(ID: {employee["id"]})':
-            employee["id"]
+            f'(ID: {employee["id"]})': employee["id"]
             for employee in employees
         }
 
@@ -1008,37 +1152,24 @@ elif page == "👥 Employees":
             list(employee_options.keys()),
         )
 
-        if st.button(
-            "🗑️ Διαγραφή",
-            type="secondary",
-        ):
-
-            employee_id = employee_options[
-                selected_employee
-            ]
-
-            delete_employee(
-                employee_id
-            )
-
-            st.success(
-                "✅ Ο εργαζόμενος διαγράφηκε."
-            )
-
+        if st.button("🗑️ Διαγραφή", type="secondary"):
+            employee_id = employee_options[selected_employee]
+            delete_employee(employee_id)
+            st.success("✅ Ο εργαζόμενος διαγράφηκε.")
             st.rerun()
 
-    else:
+else:
 
-        st.info(
-            "Δεν υπάρχουν εργαζόμενοι."
-        )
+    st.info(
+        "Δεν υπάρχουν εργαζόμενοι."
+    )
 
 
 # ============================================================
 # RECRUITMENT
 # ============================================================
 
-elif page == "📋 Recruitment":
+if page == "📋 Recruitment":
 
     if not IS_HR:
         st.error(

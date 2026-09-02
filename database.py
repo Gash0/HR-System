@@ -488,3 +488,44 @@ def get_hr_statistics():
         "total_leaves": total_leaves,
         "pending_leaves": pending_leaves
     }
+
+def update_employee(
+    employee_id,
+    first_name,
+    last_name,
+    email,
+    phone,
+    position,
+    department,
+    hire_date,
+    status
+):
+    connection = get_connection()
+    cursor = connection.cursor()
+
+    cursor.execute("""
+        UPDATE employees
+        SET
+            first_name = %s,
+            last_name = %s,
+            email = %s,
+            phone = %s,
+            position = %s,
+            department = %s,
+            hire_date = %s,
+            status = %s
+        WHERE id = %s
+    """, (
+        first_name,
+        last_name,
+        email,
+        phone,
+        position,
+        department,
+        hire_date,
+        status,
+        employee_id
+    ))
+
+    connection.commit()
+    connection.close()
