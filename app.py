@@ -27,13 +27,29 @@ from database import (
 
 if not st.user.is_logged_in:
     st.title("🔐 AI HR System")
-    st.subheader("Σύνδεση")
+    st.subheader("Σύνδεση στο HR System")
     st.button("Σύνδεση με Google", on_click=st.login)
     st.stop()
 
-st.sidebar.success(f"Συνδεδεμένος: {st.user.name}")
 
-if st.sidebar.button("Αποσύνδεση"):
+# =========================
+# USER ROLE
+# =========================
+
+user_email = st.user.email
+
+admin_emails = st.secrets["roles"]["admin_emails"]
+
+if user_email in admin_emails:
+    user_role = "Admin"
+else:
+    user_role = "Employee"
+
+
+st.sidebar.success(f"👤 {st.user.name}")
+st.sidebar.info(f"Ρόλος: {user_role}")
+
+if st.sidebar.button("🚪 Αποσύνδεση"):
     st.logout()
 
 
