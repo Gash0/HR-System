@@ -618,10 +618,18 @@ if page == "📊 Dashboard":
         else 0
     )
 
+    onboarding_completion_rate = (
+    round(
+        onboarding_completed / len(onboarding_rows) * 100
+    )
+    if onboarding_rows
+    else 0
+)
 
-    onb1, onb2, onb3, onb4, onb5 = (
+
+    onb1, onb2, onb3, onb4, onb5,onb6 = (
         st.columns(
-            5
+            6
         )
     )
 
@@ -653,6 +661,11 @@ if page == "📊 Dashboard":
     onb5.metric(
         "Εκπρόθεσμα",
         overdue_onboarding,
+    )
+
+    onb6.metric(
+        "Ρυθμός ολοκλήρωσης",
+        f"{onboarding_completion_rate}%",
     )
 
 
@@ -835,73 +848,146 @@ if page == "📊 Dashboard":
     # DEPARTMENTS
     # --------------------------------------------------------
 
-    st.subheader(
-        "🏢 Εργαζόμενοι ανά τμήμα"
+
+    # --------------------------------------------------------
+# HIRES PER MONTH
+# --------------------------------------------------------
+
+st.subheader(
+    "📅 Προσλήψεις ανά μήνα"
+)
+
+hires_per_month = {}
+
+for employee in employees:
+
+    hire_date_value = employee.get(
+        "hire_date"
     )
 
+    if hire_date_value:
 
-    department_counts = {}
-
-
-    for employee in employees:
-
-        department = (
-            safe_text(
-                employee.get(
-                    "department"
-                )
-            ).strip()
-            or "Χωρίς τμήμα"
+        hire_date_obj = parse_date(
+            hire_date_value
         )
 
+        month_key = hire_date_obj.strftime(
+            "%Y-%m"
+        )
 
-        department_counts[
-            department
+        hires_per_month[
+            month_key
         ] = (
-            department_counts.get(
-                department,
+            hires_per_month.get(
+                month_key,
                 0,
             )
             + 1
         )
 
 
-    if department_counts:
+if hires_per_month:
 
-        department_df = pd.DataFrame(
-            {
-                "Τμήμα":
-                    list(
-                        department_counts.keys()
-                    ),
+    hires_df = pd.DataFrame(
+        {
+            "Μήνας": list(
+                hires_per_month.keys()
+            ),
 
-                "Εργαζόμενοι":
-                    list(
-                        department_counts.values()
-                    ),
-            }
-        ).set_index(
-            "Τμήμα"
+            "Προσλήψεις": list(
+                hires_per_month.values()
+            ),
+        }
+    )
+
+    hires_df = hires_df.sort_values(
+        "Μήνας"
+    )
+
+    hires_df = hires_df.set_index(
+        "Μήνας"
+    )
+
+    st.bar_chart(
+        hires_df
+    )
+
+else:
+
+    st.info(
+        "Δεν υπάρχουν δεδομένα προσλήψεων."
+    )
+
+
+st.markdown(
+    "---"
+)
+
+st.subheader(
+    "🏢 Εργαζόμενοι ανά τμήμα"
+)
+
+
+department_counts = {}
+
+
+for employee in employees:
+
+    department = (
+        safe_text(
+            employee.get(
+                "department"
+            )
+        ).strip()
+        or "Χωρίς τμήμα"
+    )
+
+
+    department_counts[
+        department
+    ] = (
+        department_counts.get(
+            department,
+            0,
         )
+        + 1
+    )
 
 
-        st.bar_chart(
-            department_df
-        )
+if department_counts:
 
+    department_df = pd.DataFrame(
+        {
+            "Τμήμα":
+                list(
+                    department_counts.keys()
+                ),
 
-    else:
+            "Εργαζόμενοι":
+                list(
+                    department_counts.values()
+                ),
+        }
+    ).set_index(
+        "Τμήμα"
+    )
 
-        st.info(
-            "Δεν υπάρχουν δεδομένα εργαζομένων."
-        )
+    st.bar_chart(
+        department_df
+    )
+
+else:
+
+    st.info(
+        "Δεν υπάρχουν δεδομένα εργαζομένων."
+    )
 
 
 # ============================================================
 # EMPLOYEES
 # ============================================================
 
-elif page == "👥 Εργαζόμενοι":
+if page == "👥 Εργαζόμενοι":
 
     st.title(
         "👥 Εργαζόμενοι"
