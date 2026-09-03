@@ -344,10 +344,25 @@ if page == "📊 Dashboard":
         "👥 Workforce"
     )
 
-    kpi1, kpi2, kpi3, kpi4 = st.columns(
-        4
+    total_employees = stats.get(
+        "total_employees",
+        0,
     )
 
+    active_employees = stats.get(
+        "active_employees",
+        0,
+    )
+
+    active_employee_rate = (
+        round(
+            active_employees / total_employees * 100
+        )
+        if total_employees
+        else 0
+    )
+
+    kpi1, kpi2, kpi3, kpi4, kpi5 = st.columns(5)
 
     kpi1.metric(
         "Σύνολο εργαζομένων",
@@ -357,7 +372,6 @@ if page == "📊 Dashboard":
         ),
     )
 
-
     kpi2.metric(
         "Ενεργοί",
         stats.get(
@@ -365,7 +379,6 @@ if page == "📊 Dashboard":
             0,
         ),
     )
-
 
     kpi3.metric(
         "Ανενεργοί",
@@ -375,11 +388,9 @@ if page == "📊 Dashboard":
         ),
     )
 
-
     departments = set()
 
     for employee in employees:
-
         department = safe_text(
             employee.get(
                 "department"
@@ -391,12 +402,16 @@ if page == "📊 Dashboard":
                 department
             )
 
-
     kpi4.metric(
         "Τμήματα",
         len(
             departments
         ),
+    )
+
+    kpi5.metric(
+        "Active Employee Rate",
+        f"{active_employee_rate}%",
     )
 
 
