@@ -581,13 +581,13 @@ elif page == "📋 Recruitment":
 
 if st.button(
     "👥 Δημιουργία εργαζομένου + Onboarding",
-    key=f"create_employee_{candidate['id']}",
+    key=f"create_employee_{selected_candidate['id']}",
     type="primary",
 ):
     try:
         # 1. Δημιουργία εργαζομένου
         employee_id = create_employee_from_candidate(
-            candidate["id"]
+            selected_candidate["id"]
         )
 
         # 2. Δημιουργία onboarding
