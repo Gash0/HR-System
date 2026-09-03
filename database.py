@@ -1,23 +1,24 @@
+
 import streamlit as st
 import psycopg
 from psycopg.rows import dict_row
 
 
-# ==========================================
+# ============================================================
 # DATABASE CONNECTION
-# ==========================================
+# ============================================================
 
 def get_connection():
     return psycopg.connect(
         st.secrets["database"]["url"],
         row_factory=dict_row,
-        connect_timeout=10
+        connect_timeout=10,
     )
 
 
-# ==========================================
+# ============================================================
 # TEST CONNECTION
-# ==========================================
+# ============================================================
 
 def test_postgres_connection():
     connection = get_connection()
@@ -25,9 +26,9 @@ def test_postgres_connection():
     return True
 
 
-# ==========================================
+# ============================================================
 # EMPLOYEES
-# ==========================================
+# ============================================================
 
 def create_tables():
     connection = get_connection()
@@ -48,6 +49,7 @@ def create_tables():
     """)
 
     connection.commit()
+    cursor.close()
     connection.close()
 
 
@@ -59,7 +61,7 @@ def add_employee(
     position,
     department,
     hire_date,
-    status
+    status="Ενεργός",
 ):
     connection = get_connection()
     cursor = connection.cursor()
@@ -84,10 +86,11 @@ def add_employee(
         position,
         department,
         hire_date,
-        status
+        status,
     ))
 
     connection.commit()
+    cursor.close()
     connection.close()
 
 
@@ -103,7 +106,9 @@ def get_employees():
 
     employees = cursor.fetchall()
 
+    cursor.close()
     connection.close()
+
     return employees
 
 
@@ -114,14 +119,59 @@ def get_employee_by_email(email):
     cursor.execute("""
         SELECT *
         FROM employees
-        WHERE email = %s
+        WHERE LOWER(email) = LOWER(%s)
         LIMIT 1
     """, (email,))
 
     employee = cursor.fetchone()
 
+    cursor.close()
     connection.close()
+
     return employee
+
+
+def update_employee(
+    employee_id,
+    first_name,
+    last_name,
+    email,
+    phone,
+    position,
+    department,
+    hire_date,
+    status,
+):
+    connection = get_connection()
+    cursor = connection.cursor()
+
+    cursor.execute("""
+        UPDATE employees
+        SET
+            first_name = %s,
+            last_name = %s,
+            email = %s,
+            phone = %s,
+            position = %s,
+            department = %s,
+            hire_date = %s,
+            status = %s
+        WHERE id = %s
+    """, (
+        first_name,
+        last_name,
+        email,
+        phone,
+        position,
+        department,
+        hire_date,
+        status,
+        employee_id,
+    ))
+
+    connection.commit()
+    cursor.close()
+    connection.close()
 
 
 def delete_employee(employee_id):
@@ -134,12 +184,13 @@ def delete_employee(employee_id):
     """, (employee_id,))
 
     connection.commit()
+    cursor.close()
     connection.close()
 
 
-# ==========================================
+# ============================================================
 # RECRUITMENT
-# ==========================================
+# ============================================================
 
 def create_recruitment_table():
     connection = get_connection()
@@ -159,6 +210,7 @@ def create_recruitment_table():
     """)
 
     connection.commit()
+    cursor.close()
     connection.close()
 
 
@@ -169,7 +221,7 @@ def add_candidate(
     phone,
     position,
     application_date,
-    status
+    status="Νέα αίτηση",
 ):
     connection = get_connection()
     cursor = connection.cursor()
@@ -192,10 +244,11 @@ def add_candidate(
         phone,
         position,
         application_date,
-        status
+        status,
     ))
 
     connection.commit()
+    cursor.close()
     connection.close()
 
 
@@ -211,13 +264,33 @@ def get_candidates():
 
     candidates = cursor.fetchall()
 
+    cursor.close()
     connection.close()
+
     return candidates
 
 
-# ==========================================
+def update_candidate(candidate_id, status):
+    connection = get_connection()
+    cursor = connection.cursor()
+
+    cursor.execute("""
+        UPDATE candidates
+        SET status = %s
+        WHERE id = %s
+    """, (
+        status,
+        candidate_id,
+    ))
+
+    connection.commit()
+    cursor.close()
+    connection.close()
+
+
+# ============================================================
 # ONBOARDING
-# ==========================================
+# ============================================================
 
 def create_onboarding_table():
     connection = get_connection()
@@ -242,6 +315,7 @@ def create_onboarding_table():
     """)
 
     connection.commit()
+    cursor.close()
     connection.close()
 
 
@@ -257,10 +331,11 @@ def create_onboarding(employee_id, start_date):
         VALUES (%s, %s)
     """, (
         employee_id,
-        start_date
+        start_date,
     ))
 
     connection.commit()
+    cursor.close()
     connection.close()
 
 
@@ -281,7 +356,9 @@ def get_onboarding():
 
     onboarding = cursor.fetchall()
 
+    cursor.close()
     connection.close()
+
     return onboarding
 
 
@@ -293,7 +370,7 @@ def update_onboarding(
     equipment,
     system_access,
     training,
-    manager_meeting
+    manager_meeting,
 ):
     connection = get_connection()
     cursor = connection.cursor()
@@ -317,16 +394,17 @@ def update_onboarding(
         system_access,
         training,
         manager_meeting,
-        onboarding_id
+        onboarding_id,
     ))
 
     connection.commit()
+    cursor.close()
     connection.close()
 
 
-# ==========================================
+# ============================================================
 # LEAVES
-# ==========================================
+# ============================================================
 
 def create_leave_table():
     connection = get_connection()
@@ -348,6 +426,7 @@ def create_leave_table():
     """)
 
     connection.commit()
+    cursor.close()
     connection.close()
 
 
@@ -357,7 +436,7 @@ def add_leave(
     start_date,
     end_date,
     reason,
-    status="Εκκρεμεί"
+    status="Εκκρεμεί",
 ):
     connection = get_connection()
     cursor = connection.cursor()
@@ -378,10 +457,11 @@ def add_leave(
         start_date,
         end_date,
         reason,
-        status
+        status,
     ))
 
     connection.commit()
+    cursor.close()
     connection.close()
 
 
@@ -402,7 +482,9 @@ def get_leaves():
 
     leaves = cursor.fetchall()
 
+    cursor.close()
     connection.close()
+
     return leaves
 
 
@@ -416,16 +498,17 @@ def update_leave_status(leave_id, status):
         WHERE id = %s
     """, (
         status,
-        leave_id
+        leave_id,
     ))
 
     connection.commit()
+    cursor.close()
     connection.close()
 
 
-# ==========================================
+# ============================================================
 # HR STATISTICS
-# ==========================================
+# ============================================================
 
 def get_hr_statistics():
     connection = get_connection()
@@ -477,6 +560,9 @@ def get_hr_statistics():
     """)
     pending_leaves = cursor.fetchone()["pending"]
 
+    connection.commit()
+
+    cursor.close()
     connection.close()
 
     return {
@@ -486,62 +572,6 @@ def get_hr_statistics():
         "total_candidates": total_candidates,
         "hired_candidates": hired_candidates,
         "total_leaves": total_leaves,
-        "pending_leaves": pending_leaves
+        "pending_leaves": pending_leaves,
     }
 
-def update_employee(
-    employee_id,
-    first_name,
-    last_name,
-    email,
-    phone,
-    position,
-    department,
-    hire_date,
-    status
-):
-    connection = get_connection()
-    cursor = connection.cursor()
-
-    cursor.execute("""
-        UPDATE employees
-        SET
-            first_name = %s,
-            last_name = %s,
-            email = %s,
-            phone = %s,
-            position = %s,
-            department = %s,
-            hire_date = %s,
-            status = %s
-        WHERE id = %s
-    """, (
-        first_name,
-        last_name,
-        email,
-        phone,
-        position,
-        department,
-        hire_date,
-        status,
-        employee_id
-    ))
-
-    connection.commit()
-    connection.close()
-
-def update_candidate(candidate_id, status):
-    connection = get_connection()
-    cursor = connection.cursor()
-
-    cursor.execute(
-        """
-        UPDATE candidates
-        SET status = %s
-        WHERE id = %s
-        """,
-        (status, candidate_id)
-    )
-
-    connection.commit()
-    connection.close()
