@@ -579,22 +579,32 @@ elif page == "📋 Recruitment":
                 "Πάτησε το κουμπί για να δημιουργηθεί Employee Profile."
             )
 
-            if st.button(
-                "👥 Δημιουργία εργαζομένου",
-                key=f'create_employee_{selected_candidate["id"]}'
-            ):
-                try:
-                    employee_id = create_employee_from_candidate(
-                        selected_candidate["id"]
-                    )
+if st.button(
+    "👥 Δημιουργία εργαζομένου + Onboarding",
+    key=f"create_employee_{candidate['id']}",
+    type="primary",
+):
+    try:
+        # 1. Δημιουργία εργαζομένου
+        employee_id = create_employee_from_candidate(
+            candidate["id"]
+        )
 
-                    st.success(
-                        f"✅ Ο εργαζόμενος δημιουργήθηκε/υπάρχει ήδη. "
-                        f"Employee ID: {employee_id}"
-                    )
+        # 2. Δημιουργία onboarding
+        create_onboarding(
+            employee_id,
+            date.today().strftime("%Y-%m-%d")
+        )
 
-                except Exception as e:
-                    st.error(f"❌ Σφάλμα δημιουργίας εργαζομένου: {e}")
+        st.success(
+            "✅ Ο υποψήφιος μεταφέρθηκε στους εργαζομένους "
+            "και δημιουργήθηκε αυτόματα το Onboarding."
+        )
+
+    except Exception as e:
+        st.error(
+            f"❌ Σφάλμα: {e}"
+        )
 
         # ----------------------------------------------------
         # HISTORY
