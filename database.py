@@ -10,65 +10,164 @@ from psycopg.rows import dict_row
 # ============================================================
 
 def get_connection():
+    """
+    Σύνδεση με PostgreSQL / Supabase.
 
-    # --------------------------------------------
-    # Περίπτωση 1:
-    # DATABASE_URL μέσα στα Streamlit Secrets
-    # --------------------------------------------
+    Υποστηρίζει:
+    1. DATABASE_URL
+    2. [database]
+    3. [postgres]
+    4. [supabase]
+    5. Flat PostgreSQL secrets
+    """
 
-    if "DATABASE_URL" in st.secrets:
+    # --------------------------------------------------------
+    # 1. DATABASE_URL
+    # --------------------------------------------------------
 
+    database_url = st.secrets.get("DATABASE_URL")
+
+    if database_url:
         return psycopg.connect(
-            st.secrets["DATABASE_URL"],
+            database_url,
             row_factory=dict_row,
         )
 
-    # --------------------------------------------
-    # Περίπτωση 2:
-    # [postgres] μέσα στα Streamlit Secrets
-    # --------------------------------------------
+    # --------------------------------------------------------
+    # 2. [database]
+    # --------------------------------------------------------
 
-    if "postgres" in st.secrets:
-
-        db = st.secrets["postgres"]
+    if "database" in st.secrets:
+        db = st.secrets["database"]
 
         return psycopg.connect(
             host=db["host"],
-            port=db.get("port", 5432),
-            dbname=db.get("dbname", "postgres"),
+            port=int(db.get("port", 5432)),
+            dbname=db.get(
+                "dbname",
+                db.get("database", "postgres"),
+            ),
             user=db["user"],
             password=db["password"],
             sslmode=db.get("sslmode", "require"),
             row_factory=dict_row,
         )
 
+    # --------------------------------------------------------
+    # 3. [postgres]
+    # --------------------------------------------------------
+
+    if "postgres" in st.secrets:
+        db = st.secrets["postgres"]
+
+        return psycopg.connect(
+            host=db["host"],
+            port=int(db.get("port", 5432)),
+            dbname=db.get(
+                "dbname",
+                db.get("database", "postgres"),
+            ),
+            user=db["user"],
+            password=db["password"],
+            sslmode=db.get("sslmode", "require"),
+            row_factory=dict_row,
+        )
+
+    # --------------------------------------------------------
+    # 4. [supabase]
+    # --------------------------------------------------------
+
+    if "supabase" in st.secrets:
+        db = st.secrets["supabase"]
+
+        # Αν υπάρχει database_url μέσα στο [supabase]
+        if db.get("database_url"):
+            return psycopg.connect(
+                db["database_url"],
+                row_factory=dict_row,
+            )
+
+        return psycopg.connect(
+            host=db["host"],
+            port=int(db.get("port", 5432)),
+            dbname=db.get(
+                "dbname",
+                db.get("database", "postgres"),
+            ),
+            user=db["user"],
+            password=db["password"],
+            sslmode=db.get("sslmode", "require"),
+            row_factory=dict_row,
+        )
+
+    # --------------------------------------------------------
+    # 5. Flat secrets
+    # --------------------------------------------------------
+
+    host = (
+        st.secrets.get("DB_HOST")
+        or st.secrets.get("POSTGRES_HOST")
+        or st.secrets.get("SUPABASE_DB_HOST")
+    )
+
+    user = (
+        st.secrets.get("DB_USER")
+        or st.secrets.get("POSTGRES_USER")
+        or st.secrets.get("SUPABASE_DB_USER")
+    )
+
+    password = (
+        st.secrets.get("DB_PASSWORD")
+        or st.secrets.get("POSTGRES_PASSWORD")
+        or st.secrets.get("SUPABASE_DB_PASSWORD")
+    )
+
+    port = (
+        st.secrets.get("DB_PORT")
+        or st.secrets.get("POSTGRES_PORT")
+        or 5432
+    )
+
+    dbname = (
+        st.secrets.get("DB_NAME")
+        or st.secrets.get("POSTGRES_DB")
+        or "postgres"
+    )
+
+    if host and user and password:
+        return psycopg.connect(
+            host=host,
+            port=int(port),
+            dbname=dbname,
+            user=user,
+            password=password,
+            sslmode="require",
+            row_factory=dict_row,
+        )
+
     raise RuntimeError(
-        "Δεν βρέθηκαν PostgreSQL στοιχεία στα Streamlit Secrets."
+        "Δεν βρέθηκαν στοιχεία PostgreSQL στα Streamlit Secrets."
     )
 
 
 # ============================================================
-# TEST CONNECTION
+# TEST DATABASE CONNECTION
 # ============================================================
 
 def test_postgres_connection():
-
     conn = get_connection()
 
     try:
-
         with conn.cursor() as cur:
-
-            cur.execute(
-                "SELECT 1 AS test"
-            )
-
+            cur.execute("SELECT 1 AS test")
             result = cur.fetchone()
 
-            return result["test"] == 1
+            return bool(
+                result
+                and result.get("test") == 1
+            )
 
     finally:
-
         conn.close()
 
 
@@ -77,11 +176,9 @@ def test_postgres_connection():
 # ============================================================
 
 def create_tables():
-
     conn = get_connection()
 
     try:
-
         with conn.cursor() as cur:
 
             cur.execute(
@@ -119,8 +216,11 @@ def create_tables():
 
         conn.commit()
 
-    finally:
+    except Exception:
+        conn.rollback()
+        raise
 
+    finally:
         conn.close()
 
 
@@ -138,11 +238,9 @@ def add_employee(
     hire_date,
     status="Ενεργός",
 ):
-
     conn = get_connection()
 
     try:
-
         with conn.cursor() as cur:
 
             cur.execute(
@@ -187,8 +285,11 @@ def add_employee(
 
         return result["id"]
 
-    finally:
+    except Exception:
+        conn.rollback()
+        raise
 
+    finally:
         conn.close()
 
 
@@ -197,11 +298,9 @@ def add_employee(
 # ============================================================
 
 def get_employees():
-
     conn = get_connection()
 
     try:
-
         with conn.cursor() as cur:
 
             cur.execute(
@@ -215,7 +314,6 @@ def get_employees():
             return cur.fetchall()
 
     finally:
-
         conn.close()
 
 
@@ -224,14 +322,12 @@ def get_employees():
 # ============================================================
 
 def get_employee_by_email(email):
-
     if not email:
         return None
 
     conn = get_connection()
 
     try:
-
         with conn.cursor() as cur:
 
             cur.execute(
@@ -247,7 +343,6 @@ def get_employee_by_email(email):
             return cur.fetchone()
 
     finally:
-
         conn.close()
 
 
@@ -268,11 +363,9 @@ def update_employee(
     termination_date=None,
     termination_reason=None,
 ):
-
     conn = get_connection()
 
     try:
-
         with conn.cursor() as cur:
 
             cur.execute(
@@ -308,8 +401,11 @@ def update_employee(
 
         conn.commit()
 
-    finally:
+    except Exception:
+        conn.rollback()
+        raise
 
+    finally:
         conn.close()
 
 
@@ -318,11 +414,9 @@ def update_employee(
 # ============================================================
 
 def delete_employee(employee_id):
-
     conn = get_connection()
 
     try:
-
         with conn.cursor() as cur:
 
             cur.execute(
@@ -335,8 +429,11 @@ def delete_employee(employee_id):
 
         conn.commit()
 
-    finally:
+    except Exception:
+        conn.rollback()
+        raise
 
+    finally:
         conn.close()
 
 
@@ -345,11 +442,9 @@ def delete_employee(employee_id):
 # ============================================================
 
 def create_recruitment_table():
-
     conn = get_connection()
 
     try:
-
         with conn.cursor() as cur:
 
             cur.execute(
@@ -381,16 +476,19 @@ def create_recruitment_table():
                     changed_by TEXT,
                     changed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     FOREIGN KEY (candidate_id)
-                    REFERENCES candidates(id)
-                    ON DELETE CASCADE
+                        REFERENCES candidates(id)
+                        ON DELETE CASCADE
                 )
                 """
             )
 
         conn.commit()
 
-    finally:
+    except Exception:
+        conn.rollback()
+        raise
 
+    finally:
         conn.close()
 
 
@@ -411,11 +509,9 @@ def add_candidate(
     notes=None,
     recruiter=None,
 ):
-
     conn = get_connection()
 
     try:
-
         with conn.cursor() as cur:
 
             cur.execute(
@@ -467,6 +563,7 @@ def add_candidate(
 
             candidate_id = result["id"]
 
+            # Αρχική εγγραφή ιστορικού
             cur.execute(
                 """
                 INSERT INTO candidate_history (
@@ -494,8 +591,11 @@ def add_candidate(
 
         return candidate_id
 
-    finally:
+    except Exception:
+        conn.rollback()
+        raise
 
+    finally:
         conn.close()
 
 
@@ -504,11 +604,9 @@ def add_candidate(
 # ============================================================
 
 def get_candidates():
-
     conn = get_connection()
 
     try:
-
         with conn.cursor() as cur:
 
             cur.execute(
@@ -522,7 +620,6 @@ def get_candidates():
             return cur.fetchall()
 
     finally:
-
         conn.close()
 
 
@@ -539,16 +636,14 @@ def update_candidate(
     notes=None,
     recruiter=None,
 ):
-
     conn = get_connection()
 
     try:
-
         with conn.cursor() as cur:
 
             cur.execute(
                 """
-                SELECT status
+                SELECT *
                 FROM candidates
                 WHERE id = %s
                 """,
@@ -562,7 +657,7 @@ def update_candidate(
                     "Ο υποψήφιος δεν βρέθηκε."
                 )
 
-            old_status = candidate["status"]
+            old_status = candidate.get("status")
 
             cur.execute(
                 """
@@ -612,8 +707,11 @@ def update_candidate(
 
         conn.commit()
 
-    finally:
+    except Exception:
+        conn.rollback()
+        raise
 
+    finally:
         conn.close()
 
 
@@ -622,11 +720,9 @@ def update_candidate(
 # ============================================================
 
 def get_candidate_history(candidate_id):
-
     conn = get_connection()
 
     try:
-
         with conn.cursor() as cur:
 
             cur.execute(
@@ -642,7 +738,6 @@ def get_candidate_history(candidate_id):
             return cur.fetchall()
 
     finally:
-
         conn.close()
 
 
@@ -651,11 +746,9 @@ def get_candidate_history(candidate_id):
 # ============================================================
 
 def create_employee_from_candidate(candidate_id):
-
     conn = get_connection()
 
     try:
-
         with conn.cursor() as cur:
 
             cur.execute(
@@ -670,20 +763,16 @@ def create_employee_from_candidate(candidate_id):
             candidate = cur.fetchone()
 
             if not candidate:
-
                 raise ValueError(
                     "Ο υποψήφιος δεν βρέθηκε."
                 )
 
-            if candidate["status"] != "Προσλήφθηκε":
-
+            if candidate.get("status") != "Προσλήφθηκε":
                 raise ValueError(
-                    "Ο υποψήφιος πρέπει πρώτα να έχει κατάσταση 'Προσλήφθηκε'."
+                    "Ο υποψήφιος πρέπει να έχει κατάσταση 'Προσλήφθηκε'."
                 )
 
-            candidate_email = candidate.get(
-                "email"
-            )
+            candidate_email = candidate.get("email")
 
             if candidate_email:
 
@@ -697,11 +786,10 @@ def create_employee_from_candidate(candidate_id):
                     (candidate_email,),
                 )
 
-                existing = cur.fetchone()
+                existing_employee = cur.fetchone()
 
-                if existing:
-
-                    return existing["id"]
+                if existing_employee:
+                    return existing_employee["id"]
 
             cur.execute(
                 """
@@ -728,15 +816,13 @@ def create_employee_from_candidate(candidate_id):
                 RETURNING id
                 """,
                 (
-                    candidate["first_name"],
-                    candidate["last_name"],
+                    candidate.get("first_name"),
+                    candidate.get("last_name"),
                     candidate.get("email"),
                     candidate.get("phone"),
                     candidate.get("position"),
                     None,
-                    datetime.today().strftime(
-                        "%Y-%m-%d"
-                    ),
+                    datetime.now().strftime("%Y-%m-%d"),
                     "Ενεργός",
                 ),
             )
@@ -747,8 +833,11 @@ def create_employee_from_candidate(candidate_id):
 
         return result["id"]
 
-    finally:
+    except Exception:
+        conn.rollback()
+        raise
 
+    finally:
         conn.close()
 
 
@@ -757,11 +846,9 @@ def create_employee_from_candidate(candidate_id):
 # ============================================================
 
 def create_onboarding_table():
-
     conn = get_connection()
 
     try:
-
         with conn.cursor() as cur:
 
             cur.execute(
@@ -781,8 +868,8 @@ def create_onboarding_table():
                     deadline TEXT,
                     status TEXT DEFAULT 'Δεν ξεκίνησε',
                     FOREIGN KEY (employee_id)
-                    REFERENCES employees(id)
-                    ON DELETE CASCADE
+                        REFERENCES employees(id)
+                        ON DELETE CASCADE
                 )
                 """
             )
@@ -811,8 +898,11 @@ def create_onboarding_table():
 
         conn.commit()
 
-    finally:
+    except Exception:
+        conn.rollback()
+        raise
 
+    finally:
         conn.close()
 
 
@@ -826,11 +916,9 @@ def create_onboarding(
     responsible=None,
     deadline=None,
 ):
-
     conn = get_connection()
 
     try:
-
         with conn.cursor() as cur:
 
             cur.execute(
@@ -866,8 +954,11 @@ def create_onboarding(
 
         return result["id"]
 
-    finally:
+    except Exception:
+        conn.rollback()
+        raise
 
+    finally:
         conn.close()
 
 
@@ -876,11 +967,9 @@ def create_onboarding(
 # ============================================================
 
 def get_onboarding():
-
     conn = get_connection()
 
     try:
-
         with conn.cursor() as cur:
 
             cur.execute(
@@ -902,7 +991,6 @@ def get_onboarding():
             return cur.fetchall()
 
     finally:
-
         conn.close()
 
 
@@ -922,8 +1010,7 @@ def update_onboarding(
     responsible=None,
     deadline=None,
 ):
-
-    values = [
+    task_values = [
         contract,
         documents,
         email,
@@ -935,25 +1022,21 @@ def update_onboarding(
 
     completed = sum(
         int(bool(value))
-        for value in values
+        for value in task_values
     )
 
     if completed == 7:
-
         status = "Ολοκληρώθηκε"
 
     elif completed > 0:
-
         status = "Σε εξέλιξη"
 
     else:
-
         status = "Δεν ξεκίνησε"
 
     conn = get_connection()
 
     try:
-
         with conn.cursor() as cur:
 
             cur.execute(
@@ -989,21 +1072,22 @@ def update_onboarding(
 
         conn.commit()
 
-    finally:
+    except Exception:
+        conn.rollback()
+        raise
 
+    finally:
         conn.close()
 
 
 # ============================================================
-# LEAVE TABLE
+# LEAVES TABLE
 # ============================================================
 
 def create_leave_table():
-
     conn = get_connection()
 
     try:
-
         with conn.cursor() as cur:
 
             cur.execute(
@@ -1018,16 +1102,19 @@ def create_leave_table():
                     status TEXT DEFAULT 'Εκκρεμεί',
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     FOREIGN KEY (employee_id)
-                    REFERENCES employees(id)
-                    ON DELETE CASCADE
+                        REFERENCES employees(id)
+                        ON DELETE CASCADE
                 )
                 """
             )
 
         conn.commit()
 
-    finally:
+    except Exception:
+        conn.rollback()
+        raise
 
+    finally:
         conn.close()
 
 
@@ -1043,11 +1130,9 @@ def add_leave(
     reason=None,
     status="Εκκρεμεί",
 ):
-
     conn = get_connection()
 
     try:
-
         with conn.cursor() as cur:
 
             cur.execute(
@@ -1086,8 +1171,11 @@ def add_leave(
 
         return result["id"]
 
-    finally:
+    except Exception:
+        conn.rollback()
+        raise
 
+    finally:
         conn.close()
 
 
@@ -1096,11 +1184,9 @@ def add_leave(
 # ============================================================
 
 def get_leaves():
-
     conn = get_connection()
 
     try:
-
         with conn.cursor() as cur:
 
             cur.execute(
@@ -1110,8 +1196,8 @@ def get_leaves():
                     e.first_name,
                     e.last_name,
                     e.email AS employee_email,
-                    e.department,
-                    e.position
+                    e.position,
+                    e.department
                 FROM leaves l
                 JOIN employees e
                     ON e.id = l.employee_id
@@ -1122,7 +1208,6 @@ def get_leaves():
             return cur.fetchall()
 
     finally:
-
         conn.close()
 
 
@@ -1134,11 +1219,9 @@ def update_leave_status(
     leave_id,
     status,
 ):
-
     conn = get_connection()
 
     try:
-
         with conn.cursor() as cur:
 
             cur.execute(
@@ -1155,8 +1238,11 @@ def update_leave_status(
 
         conn.commit()
 
-    finally:
+    except Exception:
+        conn.rollback()
+        raise
 
+    finally:
         conn.close()
 
 
@@ -1165,23 +1251,24 @@ def update_leave_status(
 # ============================================================
 
 def get_hr_statistics():
-
     conn = get_connection()
 
     try:
-
         with conn.cursor() as cur:
 
             cur.execute(
                 """
                 SELECT
                     COUNT(*) AS total_employees,
+
                     COUNT(*) FILTER (
                         WHERE status = 'Ενεργός'
                     ) AS active_employees,
+
                     COUNT(*) FILTER (
                         WHERE status = 'Ανενεργός'
                     ) AS inactive_employees
+
                 FROM employees
                 """
             )
@@ -1189,28 +1276,17 @@ def get_hr_statistics():
             result = cur.fetchone()
 
             return {
-                "total_employees": (
-                    result.get(
-                        "total_employees"
-                    )
-                    or 0
-                ),
-                "active_employees": (
-                    result.get(
-                        "active_employees"
-                    )
-                    or 0
-                ),
-                "inactive_employees": (
-                    result.get(
-                        "inactive_employees"
-                    )
-                    or 0
-                ),
+                "total_employees":
+                    result.get("total_employees", 0) or 0,
+
+                "active_employees":
+                    result.get("active_employees", 0) or 0,
+
+                "inactive_employees":
+                    result.get("inactive_employees", 0) or 0,
             }
 
     finally:
-
         conn.close()
 
 
@@ -1219,11 +1295,14 @@ def get_hr_statistics():
 # ============================================================
 
 def get_time_to_hire_stats():
+    """
+    application_date ->
+    πρώτη ημερομηνία που ο candidate έγινε Προσλήφθηκε
+    """
 
     conn = get_connection()
 
     try:
-
         with conn.cursor() as cur:
 
             cur.execute(
@@ -1235,16 +1314,21 @@ def get_time_to_hire_stats():
                     c.position,
                     c.application_date,
                     MIN(ch.changed_at) AS hired_at
+
                 FROM candidates c
+
                 JOIN candidate_history ch
                     ON ch.candidate_id = c.id
+
                 WHERE ch.new_status = 'Προσλήφθηκε'
+
                 GROUP BY
                     c.id,
                     c.first_name,
                     c.last_name,
                     c.position,
                     c.application_date
+
                 ORDER BY hired_at DESC
                 """
             )
@@ -1266,12 +1350,22 @@ def get_time_to_hire_stats():
             if not application_date or not hired_at:
                 continue
 
-            # Application Date
+            # ------------------------------------------------
+            # APPLICATION DATE
+            # ------------------------------------------------
+
             if isinstance(
+                application_date,
+                datetime,
+            ):
+                application_date_obj = (
+                    application_date.date()
+                )
+
+            elif isinstance(
                 application_date,
                 str,
             ):
-
                 application_date_obj = (
                     datetime.strptime(
                         application_date[:10],
@@ -1279,34 +1373,27 @@ def get_time_to_hire_stats():
                     ).date()
                 )
 
-            elif isinstance(
-                application_date,
-                datetime,
-            ):
-
-                application_date_obj = (
-                    application_date.date()
-                )
-
             else:
-
                 application_date_obj = (
                     application_date
                 )
 
-            # Hired Date
+            # ------------------------------------------------
+            # HIRED DATE
+            # ------------------------------------------------
+
             if isinstance(
                 hired_at,
                 datetime,
             ):
-
-                hired_date_obj = hired_at.date()
+                hired_date_obj = (
+                    hired_at.date()
+                )
 
             elif isinstance(
                 hired_at,
                 str,
             ):
-
                 hired_date_obj = (
                     datetime.fromisoformat(
                         hired_at
@@ -1314,44 +1401,46 @@ def get_time_to_hire_stats():
                 )
 
             else:
-
                 hired_date_obj = hired_at
+
+            # ------------------------------------------------
+            # DAYS
+            # ------------------------------------------------
 
             days_to_hire = (
                 hired_date_obj
                 - application_date_obj
             ).days
 
-            if days_to_hire >= 0:
+            if days_to_hire < 0:
+                continue
 
-                results.append(
-                    {
-                        "id": row.get(
-                            "id"
-                        ),
-                        "first_name": row.get(
-                            "first_name"
-                        ),
-                        "last_name": row.get(
-                            "last_name"
-                        ),
-                        "position": row.get(
-                            "position"
-                        ),
-                        "application_date": (
-                            application_date_obj
-                        ),
-                        "hired_date": (
-                            hired_date_obj
-                        ),
-                        "days_to_hire": (
-                            days_to_hire
-                        ),
-                    }
-                )
+            results.append(
+                {
+                    "id":
+                        row.get("id"),
+
+                    "first_name":
+                        row.get("first_name"),
+
+                    "last_name":
+                        row.get("last_name"),
+
+                    "position":
+                        row.get("position"),
+
+                    "application_date":
+                        application_date_obj,
+
+                    "hired_date":
+                        hired_date_obj,
+
+                    "days_to_hire":
+                        days_to_hire,
+                }
+            )
 
         return results
 
     finally:
-
         conn.close()
