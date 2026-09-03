@@ -389,6 +389,87 @@ def format_date(value):
     return parse_date(value).strftime("%d/%m/%Y")
 
 
+
+st.markdown(
+    """
+    <style>
+    /* Dashboard 4.0 */
+    .hr-hero {
+        padding: 1.45rem 1.6rem;
+        border-radius: 20px;
+        background: linear-gradient(135deg, #102a56 0%, #1f5eff 100%);
+        color: white;
+        margin-bottom: 1.2rem;
+        box-shadow: 0 14px 34px rgba(31, 94, 255, 0.18);
+    }
+
+    .hr-hero h1 {
+        color: white !important;
+        margin: 0 !important;
+        font-size: 2rem !important;
+    }
+
+    .hr-hero p {
+        color: rgba(255,255,255,0.82) !important;
+        margin: 0.45rem 0 0 0 !important;
+        font-size: 0.98rem;
+    }
+
+    .hr-section-label {
+        display: inline-block;
+        padding: 0.28rem 0.65rem;
+        border-radius: 999px;
+        background: #eaf1ff;
+        color: #1f5eff;
+        font-size: 0.76rem;
+        font-weight: 800;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        margin-bottom: 0.45rem;
+    }
+
+    .hr-section-title {
+        font-size: 1.28rem;
+        font-weight: 800;
+        color: #162033;
+        margin-bottom: 0.8rem;
+    }
+
+    .hr-panel {
+        background: #ffffff;
+        border: 1px solid #e5e9f2;
+        border-radius: 16px;
+        padding: 1rem 1.1rem;
+        box-shadow: 0 5px 18px rgba(31,41,55,0.04);
+        margin-bottom: 0.75rem;
+    }
+
+    [data-testid="stSidebar"] .stButton > button {
+        background: rgba(255,255,255,0.08) !important;
+        color: white !important;
+        border: 1px solid rgba(255,255,255,0.12) !important;
+        width: 100% !important;
+    }
+
+    [data-testid="stSidebar"] .stButton > button:hover {
+        background: rgba(255,255,255,0.14) !important;
+        border-color: rgba(255,255,255,0.20) !important;
+    }
+
+    [data-testid="stSidebar"] [data-testid="stAlert"] {
+        background: rgba(255,255,255,0.06) !important;
+        border: 1px solid rgba(255,255,255,0.08) !important;
+    }
+
+    [data-testid="stSidebar"] [data-testid="stAlert"] p {
+        color: white !important;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
+
 # ============================================================
 # DATABASE INITIALIZATION
 # ============================================================
@@ -414,9 +495,6 @@ if page == "📊 Dashboard":
         st.error("⛔ Δεν έχεις δικαίωμα πρόσβασης.")
         st.stop()
 
-    st.title("📊 HR Dashboard")
-    st.caption("Κεντρική εικόνα του τμήματος Ανθρώπινου Δυναμικού.")
-
     employees = get_employees()
     candidates = get_candidates()
     leaves = get_leaves()
@@ -427,16 +505,35 @@ if page == "📊 Dashboard":
     except Exception:
         time_to_hire_data = []
 
+    current_year = date.today().year
+
+    st.markdown(
+        f"""
+        <div class="hr-hero">
+            <h1>HR Overview</h1>
+            <p>Καλώς ήρθες, {display_name}. Μια καθαρή εικόνα για ανθρώπους, προσλήψεις και HR λειτουργίες.</p>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
     departments = sorted({
         employee.get("department")
         for employee in employees
         if employee.get("department")
     })
 
-    department_filter = st.selectbox(
-        "🏢 Φίλτρο τμήματος",
-        ["Όλα"] + departments,
-    )
+    filter_col, info_col = st.columns([2.2, 1])
+
+    with filter_col:
+        department_filter = st.selectbox(
+            "🏢 Τμήμα",
+            ["Όλα"] + departments,
+            key="dashboard_department_filter",
+        )
+
+    with info_col:
+        st.info(f"📅 Αναφορά έτους: {current_year}")
 
     if department_filter == "Όλα":
         filtered_employees = employees
@@ -448,11 +545,13 @@ if page == "📊 Dashboard":
         ]
 
     filtered_total = len(filtered_employees)
+
     filtered_active = sum(
         1
         for employee in filtered_employees
         if employee.get("status") == "Ενεργός"
     )
+
     filtered_inactive = sum(
         1
         for employee in filtered_employees
@@ -466,49 +565,104 @@ if page == "📊 Dashboard":
     )
 
     total_candidates = len(candidates)
+
     hired_candidates = sum(
         1
         for candidate in candidates
         if candidate.get("status") == "Προσλήφθηκε"
     )
+
     pending_leaves = sum(
         1
         for leave in leaves
         if leave.get("status") == "Εκκρεμεί"
     )
 
-    col1, col2, col3, col4 = st.columns(4)
+    st.markdown(
+        '<span class="hr-section-label">Executive summary</span>',
+        unsafe_allow_html=True,
+    )
+    st.markdown(
+        '<div class="hr-section-title">Βασικοί δείκτες HR</div>',
+        unsafe_allow_html=True,
+    )
 
-    with col1:
-        st.metric("👥 Σύνολο εργαζομένων", filtered_total)
-    with col2:
-        st.metric("✅ Ενεργοί", filtered_active)
-    with col3:
-        st.metric("📋 Υποψήφιοι", total_candidates)
-    with col4:
-        st.metric("⏳ Εκκρεμείς άδειες", pending_leaves)
+    k1, k2, k3, k4 = st.columns(4)
+    k1.metric("👥 Εργαζόμενοι", filtered_total)
+    k2.metric("✅ Ενεργοί", filtered_active)
+    k3.metric("📋 Υποψήφιοι", total_candidates)
+    k4.metric("⏳ Εκκρεμείς άδειες", pending_leaves)
 
-    col1, col2, col3, col4 = st.columns(4)
+    k5, k6, k7, k8 = st.columns(4)
+    k5.metric("❌ Ανενεργοί", filtered_inactive)
+    k6.metric("🎯 Προσλήψεις", hired_candidates)
+    k7.metric("🏖️ Αιτήσεις αδειών", len(leaves))
+    k8.metric("📈 Active Rate", f"{active_rate:.1f}%")
 
-    with col1:
-        st.metric("❌ Ανενεργοί", filtered_inactive)
-    with col2:
-        st.metric("🎯 Προσλήψεις", hired_candidates)
-    with col3:
-        st.metric("🏖️ Σύνολο αδειών", len(leaves))
-    with col4:
-        st.metric("📈 Active Rate", f"{active_rate:.1f}%")
+    # ========================================================
+    # WORKFORCE SNAPSHOT
+    # ========================================================
+
+    st.divider()
+    st.markdown(
+        '<span class="hr-section-label">Workforce</span>',
+        unsafe_allow_html=True,
+    )
+    st.markdown(
+        '<div class="hr-section-title">Εικόνα προσωπικού</div>',
+        unsafe_allow_html=True,
+    )
+
+    workforce_left, workforce_right = st.columns(2)
+
+    with workforce_left:
+        st.markdown("#### 👥 Εργαζόμενοι ανά τμήμα")
+
+        if filtered_employees:
+            workforce_df = pd.DataFrame(filtered_employees)
+
+            department_counts = (
+                workforce_df["department"]
+                .fillna("Χωρίς τμήμα")
+                .replace("", "Χωρίς τμήμα")
+                .value_counts()
+            )
+
+            st.bar_chart(department_counts, use_container_width=True)
+        else:
+            st.info("Δεν υπάρχουν εργαζόμενοι.")
+
+    with workforce_right:
+        st.markdown("#### 📊 Κατάσταση εργαζομένων")
+
+        if filtered_employees:
+            workforce_df = pd.DataFrame(filtered_employees)
+
+            status_counts = (
+                workforce_df["status"]
+                .fillna("Άγνωστη κατάσταση")
+                .value_counts()
+            )
+
+            st.bar_chart(status_counts, use_container_width=True)
+        else:
+            st.info("Δεν υπάρχουν δεδομένα.")
 
     # ========================================================
     # EMPLOYEE TURNOVER
     # ========================================================
 
     st.divider()
-    st.subheader("📉 Employee Turnover")
+    st.markdown(
+        '<span class="hr-section-label">Retention</span>',
+        unsafe_allow_html=True,
+    )
+    st.markdown(
+        '<div class="hr-section-title">📉 Employee Turnover</div>',
+        unsafe_allow_html=True,
+    )
 
-    current_year = date.today().year
     year_start = date(current_year, 1, 1)
-
     departures_this_year = []
 
     for employee in filtered_employees:
@@ -549,292 +703,322 @@ if page == "📊 Dashboard":
             headcount_start += 1
 
     headcount_now = filtered_active
-    average_headcount = (headcount_start + headcount_now) / 2
 
-    turnover_rate = (
-        len(departures_this_year) / average_headcount * 100
-        if average_headcount > 0
-        else 0
-    )
+    # Για αξιόπιστο annual turnover χρειάζεται headcount στην αρχή του έτους.
+    if headcount_start > 0:
+        average_headcount = (headcount_start + headcount_now) / 2
+        turnover_rate = (
+            len(departures_this_year) / average_headcount * 100
+            if average_headcount > 0
+            else 0
+        )
+        turnover_display = f"{turnover_rate:.1f}%"
+    else:
+        turnover_rate = None
+        turnover_display = "N/A"
 
     t1, t2, t3, t4 = st.columns(4)
-    t1.metric(f"Turnover Rate {current_year}", f"{turnover_rate:.1f}%")
+    t1.metric(f"Turnover Rate {current_year}", turnover_display)
     t2.metric("Αποχωρήσεις", len(departures_this_year))
     t3.metric("Headcount αρχής έτους", headcount_start)
     t4.metric("Τωρινό Headcount", headcount_now)
 
+    if headcount_start == 0:
+        st.caption(
+            "ℹ️ Το Turnover Rate εμφανίζεται N/A επειδή δεν υπάρχει διαθέσιμο "
+            "headcount στην αρχή του έτους. Έτσι αποφεύγεται παραπλανητικό ποσοστό."
+        )
+
     if departures_this_year:
-        reason_counts = {}
+        turnover_left, turnover_right = st.columns([1, 1.3])
 
-        for employee in departures_this_year:
-            reason = employee.get("termination_reason") or "Άλλο"
-            reason_counts[reason] = reason_counts.get(reason, 0) + 1
+        with turnover_left:
+            st.markdown("#### Αποχωρήσεις ανά λόγο")
 
-        st.write("#### Αποχωρήσεις ανά λόγο")
+            reason_counts = {}
 
-        reason_df = pd.DataFrame(
-            {
-                "Λόγος": list(reason_counts.keys()),
-                "Αποχωρήσεις": list(reason_counts.values()),
-            }
-        ).set_index("Λόγος")
+            for employee in departures_this_year:
+                reason = employee.get("termination_reason") or "Δεν καταχωρήθηκε"
+                reason_counts[reason] = reason_counts.get(reason, 0) + 1
 
-        st.bar_chart(reason_df)
-
-        departure_rows = [
-            {
-                "Εργαζόμενος": (
-                    f"{employee.get('first_name', '')} "
-                    f"{employee.get('last_name', '')}"
-                ).strip(),
-                "Θέση": employee.get("position") or "-",
-                "Τμήμα": employee.get("department") or "-",
-                "Ημερομηνία αποχώρησης": format_date(
-                    employee.get("termination_date")
-                ),
-                "Λόγος": employee.get("termination_reason") or "-",
-            }
-            for employee in departures_this_year
-        ]
-
-        st.dataframe(
-            pd.DataFrame(departure_rows),
-            use_container_width=True,
-            hide_index=True,
-        )
-    else:
-        st.info(f"Δεν υπάρχουν καταχωρημένες αποχωρήσεις για το {current_year}.")
-
-    # ========================================================
-    # TIME TO HIRE
-    # ========================================================
-
-    st.divider()
-    st.subheader("⏱️ Time to Hire")
-
-    if time_to_hire_data:
-        average_time_to_hire = round(
-            sum(item["days_to_hire"] for item in time_to_hire_data)
-            / len(time_to_hire_data),
-            1,
-        )
-        fastest_hire = min(
-            item["days_to_hire"]
-            for item in time_to_hire_data
-        )
-        slowest_hire = max(
-            item["days_to_hire"]
-            for item in time_to_hire_data
-        )
-
-        h1, h2, h3 = st.columns(3)
-        h1.metric("Μέσο Time to Hire", f"{average_time_to_hire} ημέρες")
-        h2.metric("Ταχύτερη πρόσληψη", f"{fastest_hire} ημέρες")
-        h3.metric("Μεγαλύτερο Time to Hire", f"{slowest_hire} ημέρες")
-
-        time_to_hire_df = pd.DataFrame(
-            [
+            reason_df = pd.DataFrame(
                 {
-                    "Υποψήφιος": (
-                        f"{item.get('first_name', '')} "
-                        f"{item.get('last_name', '')}"
-                    ).strip(),
-                    "Θέση": item.get("position") or "-",
-                    "Ημερομηνία αίτησης": (
-                        item["application_date"].strftime("%d/%m/%Y")
-                        if item.get("application_date")
-                        else "-"
-                    ),
-                    "Ημερομηνία πρόσληψης": (
-                        item["hired_date"].strftime("%d/%m/%Y")
-                        if item.get("hired_date")
-                        else "-"
-                    ),
-                    "Time to Hire": f"{item['days_to_hire']} ημέρες",
+                    "Λόγος": list(reason_counts.keys()),
+                    "Αποχωρήσεις": list(reason_counts.values()),
                 }
-                for item in time_to_hire_data
+            ).set_index("Λόγος")
+
+            st.bar_chart(reason_df, use_container_width=True)
+
+        with turnover_right:
+            st.markdown("#### Πρόσφατες αποχωρήσεις")
+
+            departure_rows = [
+                {
+                    "Εργαζόμενος": (
+                        f"{employee.get('first_name', '')} "
+                        f"{employee.get('last_name', '')}"
+                    ).strip(),
+                    "Τμήμα": employee.get("department") or "-",
+                    "Αποχώρηση": format_date(
+                        employee.get("termination_date")
+                    ),
+                    "Λόγος": employee.get("termination_reason") or "-",
+                }
+                for employee in departures_this_year
             ]
-        )
 
-        st.dataframe(
-            time_to_hire_df,
-            use_container_width=True,
-            hide_index=True,
-        )
+            st.dataframe(
+                pd.DataFrame(departure_rows),
+                use_container_width=True,
+                hide_index=True,
+            )
     else:
-        st.info("Δεν υπάρχουν ακόμη αρκετά δεδομένα για υπολογισμό Time to Hire.")
-
-    # ========================================================
-    # WORKFORCE ANALYTICS
-    # ========================================================
-
-    st.divider()
-    st.subheader("👥 Εργαζόμενοι ανά τμήμα")
-
-    if employees:
-        df = pd.DataFrame(employees)
-        counts = (
-            df["department"]
-            .fillna("Χωρίς τμήμα")
-            .replace("", "Χωρίς τμήμα")
-            .value_counts()
-        )
-        st.bar_chart(counts)
-    else:
-        st.info("Δεν υπάρχουν εργαζόμενοι.")
-
-    st.divider()
-    st.subheader("📊 Κατάσταση εργαζομένων")
-
-    if filtered_employees:
-        df = pd.DataFrame(filtered_employees)
-        st.bar_chart(
-            df["status"]
-            .fillna("Άγνωστη κατάσταση")
-            .value_counts()
-        )
-    else:
-        st.info("Δεν υπάρχουν δεδομένα για το συγκεκριμένο φίλτρο.")
+        st.success(f"✅ Δεν υπάρχουν καταχωρημένες αποχωρήσεις για το {current_year}.")
 
     # ========================================================
     # RECRUITMENT
     # ========================================================
 
     st.divider()
-    st.subheader("📋 Recruitment")
+    st.markdown(
+        '<span class="hr-section-label">Talent acquisition</span>',
+        unsafe_allow_html=True,
+    )
+    st.markdown(
+        '<div class="hr-section-title">🎯 Recruitment Performance</div>',
+        unsafe_allow_html=True,
+    )
 
-    if candidates:
-        df = pd.DataFrame(candidates)
-        st.bar_chart(
-            df["status"]
-            .fillna("Άγνωστη κατάσταση")
-            .value_counts()
+    recruitment_statuses = [
+        "Νέα αίτηση",
+        "Σε αξιολόγηση",
+        "Συνέντευξη",
+        "Προσφορά",
+        "Προσλήφθηκε",
+        "Απορρίφθηκε",
+    ]
+
+    recruitment_counts = {
+        status: sum(
+            1
+            for candidate in candidates
+            if candidate.get("status") == status
         )
-    else:
-        st.info("Δεν υπάρχουν υποψήφιοι.")
+        for status in recruitment_statuses
+    }
 
-    st.subheader("🎯 Recruitment Funnel")
+    interviews = recruitment_counts["Συνέντευξη"]
+    offers = recruitment_counts["Προσφορά"]
+    hired = recruitment_counts["Προσλήφθηκε"]
 
-    if candidates:
-        df = pd.DataFrame(candidates)
+    hire_rate = (
+        hired / total_candidates * 100
+        if total_candidates
+        else 0
+    )
 
-        funnel_order = [
-            "Νέα αίτηση",
-            "Σε αξιολόγηση",
-            "Συνέντευξη",
-            "Προσφορά",
-            "Προσλήφθηκε",
-            "Απορρίφθηκε",
-        ]
+    r1, r2, r3, r4 = st.columns(4)
+    r1.metric("📋 Υποψήφιοι", total_candidates)
+    r2.metric("🗣️ Συνεντεύξεις", interviews)
+    r3.metric("📨 Προσφορές", offers)
+    r4.metric("🎯 Hire Rate", f"{hire_rate:.1f}%")
 
-        funnel = (
-            df["status"]
-            .value_counts()
-            .reindex(funnel_order, fill_value=0)
-        )
+    recruitment_left, recruitment_right = st.columns([1.15, 1])
 
-        st.bar_chart(funnel)
+    with recruitment_left:
+        st.markdown("#### Recruitment Pipeline")
 
-        total = len(df)
-        hired = int(
-            (df["status"] == "Προσλήφθηκε").sum()
-        )
+        if candidates:
+            pipeline_df = pd.DataFrame(
+                {
+                    "Στάδιο": recruitment_statuses,
+                    "Υποψήφιοι": [
+                        recruitment_counts[status]
+                        for status in recruitment_statuses
+                    ],
+                }
+            ).set_index("Στάδιο")
 
-        st.metric(
-            "📈 Ποσοστό πρόσληψης",
-            f"{(hired / total * 100) if total else 0:.1f}%",
-        )
-    else:
-        st.info("Δεν υπάρχουν δεδομένα recruitment.")
+            st.bar_chart(pipeline_df, use_container_width=True)
+        else:
+            st.info("Δεν υπάρχουν υποψήφιοι.")
 
-    # ========================================================
-    # LEAVES
-    # ========================================================
+    with recruitment_right:
+        st.markdown("#### ⏱️ Time to Hire")
 
-    st.divider()
-    st.subheader("🏖️ Leave Analytics")
+        if time_to_hire_data:
+            average_time_to_hire = round(
+                sum(
+                    item["days_to_hire"]
+                    for item in time_to_hire_data
+                )
+                / len(time_to_hire_data),
+                1,
+            )
 
-    if leaves:
-        df = pd.DataFrame(leaves)
-        approved = int(
-            (df["status"] == "Εγκρίθηκε").sum()
-        )
-        rejected = int(
-            (df["status"] == "Απορρίφθηκε").sum()
-        )
-        pending = int(
-            (df["status"] == "Εκκρεμεί").sum()
-        )
+            fastest_hire = min(
+                item["days_to_hire"]
+                for item in time_to_hire_data
+            )
 
-        c1, c2, c3 = st.columns(3)
+            slowest_hire = max(
+                item["days_to_hire"]
+                for item in time_to_hire_data
+            )
 
-        with c1:
-            st.metric("✅ Εγκεκριμένες", approved)
-        with c2:
-            st.metric("❌ Απορριφθείσες", rejected)
-        with c3:
-            st.metric("⏳ Εκκρεμείς", pending)
-    else:
-        st.info("Δεν υπάρχουν αιτήματα άδειας.")
+            th1, th2, th3 = st.columns(3)
+            th1.metric("Μέσο", f"{average_time_to_hire} ημ.")
+            th2.metric("Ταχύτερο", f"{fastest_hire} ημ.")
+            th3.metric("Μέγιστο", f"{slowest_hire} ημ.")
 
-    # ========================================================
-    # ONBOARDING
-    # ========================================================
-
-    st.divider()
-    st.subheader("🚀 Onboarding")
-
-    if onboarding_rows:
-        onboarding_completed = 0
-        onboarding_in_progress = 0
-        onboarding_not_started = 0
-
-        for row in onboarding_rows:
-            completed = sum(
-                int(bool(row.get(key)))
-                for key in [
-                    "contract",
-                    "documents",
-                    "email",
-                    "equipment",
-                    "system_access",
-                    "training",
-                    "manager_meeting",
+            time_to_hire_df = pd.DataFrame(
+                [
+                    {
+                        "Υποψήφιος": (
+                            f"{item.get('first_name', '')} "
+                            f"{item.get('last_name', '')}"
+                        ).strip(),
+                        "Θέση": item.get("position") or "-",
+                        "Ημέρες": item["days_to_hire"],
+                    }
+                    for item in time_to_hire_data
                 ]
             )
 
-            if completed == 7:
-                onboarding_completed += 1
-            elif completed > 0:
-                onboarding_in_progress += 1
-            else:
-                onboarding_not_started += 1
+            st.dataframe(
+                time_to_hire_df,
+                use_container_width=True,
+                hide_index=True,
+            )
+        else:
+            st.info("Δεν υπάρχουν ακόμη αρκετά δεδομένα.")
 
-        o1, o2, o3 = st.columns(3)
-        o1.metric("Δεν ξεκίνησε", onboarding_not_started)
-        o2.metric("Σε εξέλιξη", onboarding_in_progress)
-        o3.metric("Ολοκληρώθηκε", onboarding_completed)
-    else:
-        st.info("Δεν υπάρχουν onboarding διαδικασίες.")
+    # ========================================================
+    # HR OPERATIONS
+    # ========================================================
+
+    st.divider()
+    st.markdown(
+        '<span class="hr-section-label">Operations</span>',
+        unsafe_allow_html=True,
+    )
+    st.markdown(
+        '<div class="hr-section-title">HR Operations</div>',
+        unsafe_allow_html=True,
+    )
+
+    operations_left, operations_right = st.columns(2)
+
+    with operations_left:
+        st.markdown("#### 🏖️ Άδειες")
+
+        if leaves:
+            leave_df = pd.DataFrame(leaves)
+
+            approved = int(
+                (leave_df["status"] == "Εγκρίθηκε").sum()
+            )
+            rejected = int(
+                (leave_df["status"] == "Απορρίφθηκε").sum()
+            )
+            pending = int(
+                (leave_df["status"] == "Εκκρεμεί").sum()
+            )
+
+            l1, l2, l3 = st.columns(3)
+            l1.metric("✅ Εγκεκριμένες", approved)
+            l2.metric("⏳ Εκκρεμείς", pending)
+            l3.metric("❌ Απορριφθείσες", rejected)
+
+            leave_counts = (
+                leave_df["status"]
+                .fillna("Άγνωστη κατάσταση")
+                .value_counts()
+            )
+            st.bar_chart(leave_counts, use_container_width=True)
+        else:
+            st.info("Δεν υπάρχουν αιτήματα άδειας.")
+
+    with operations_right:
+        st.markdown("#### 🚀 Onboarding")
+
+        if onboarding_rows:
+            onboarding_completed = 0
+            onboarding_in_progress = 0
+            onboarding_not_started = 0
+
+            for row in onboarding_rows:
+                completed = sum(
+                    int(bool(row.get(key)))
+                    for key in [
+                        "contract",
+                        "documents",
+                        "email",
+                        "equipment",
+                        "system_access",
+                        "training",
+                        "manager_meeting",
+                    ]
+                )
+
+                if completed == 7:
+                    onboarding_completed += 1
+                elif completed > 0:
+                    onboarding_in_progress += 1
+                else:
+                    onboarding_not_started += 1
+
+            o1, o2, o3 = st.columns(3)
+            o1.metric("Δεν ξεκίνησε", onboarding_not_started)
+            o2.metric("Σε εξέλιξη", onboarding_in_progress)
+            o3.metric("Ολοκληρώθηκε", onboarding_completed)
+
+            onboarding_chart = pd.DataFrame(
+                {
+                    "Κατάσταση": [
+                        "Δεν ξεκίνησε",
+                        "Σε εξέλιξη",
+                        "Ολοκληρώθηκε",
+                    ],
+                    "Πλήθος": [
+                        onboarding_not_started,
+                        onboarding_in_progress,
+                        onboarding_completed,
+                    ],
+                }
+            ).set_index("Κατάσταση")
+
+            st.bar_chart(onboarding_chart, use_container_width=True)
+        else:
+            st.info("Δεν υπάρχουν onboarding διαδικασίες.")
 
     # ========================================================
     # RECENT EMPLOYEES
     # ========================================================
 
     st.divider()
-    st.subheader("👤 Πρόσφατοι εργαζόμενοι")
+    st.markdown(
+        '<span class="hr-section-label">Directory</span>',
+        unsafe_allow_html=True,
+    )
+    st.markdown(
+        '<div class="hr-section-title">👤 Πρόσφατοι εργαζόμενοι</div>',
+        unsafe_allow_html=True,
+    )
 
     if filtered_employees:
         recent_rows = [
             {
-                "Όνομα": employee.get("first_name"),
-                "Επώνυμο": employee.get("last_name"),
-                "Email": employee.get("email"),
-                "Θέση": employee.get("position"),
-                "Τμήμα": employee.get("department"),
-                "Κατάσταση": employee.get("status"),
+                "Εργαζόμενος": (
+                    f"{employee.get('first_name', '')} "
+                    f"{employee.get('last_name', '')}"
+                ).strip(),
+                "Email": employee.get("email") or "-",
+                "Θέση": employee.get("position") or "-",
+                "Τμήμα": employee.get("department") or "-",
+                "Κατάσταση": employee.get("status") or "-",
                 "Πρόσληψη": format_date(employee.get("hire_date")),
-                "Αποχώρηση": format_date(employee.get("termination_date")),
             }
             for employee in filtered_employees[:10]
         ]
