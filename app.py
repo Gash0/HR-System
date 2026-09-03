@@ -2,6 +2,7 @@ import os
 from datetime import date, datetime
 
 import pandas as pd
+import altair as alt
 import streamlit as st
 from dotenv import load_dotenv
 from openai import OpenAI
@@ -470,6 +471,94 @@ st.markdown(
 )
 
 
+
+# ============================================================
+# CHART HELPERS
+# ============================================================
+
+def render_horizontal_bar(data, category, value, title=None):
+    if data is None or data.empty:
+        st.info("Δεν υπάρχουν δεδομένα.")
+        return
+
+    chart = (
+        alt.Chart(data)
+        .mark_bar(cornerRadiusTopRight=8, cornerRadiusBottomRight=8)
+        .encode(
+            x=alt.X(f"{value}:Q", title=None, axis=alt.Axis(grid=True, tickMinStep=1)),
+            y=alt.Y(
+                f"{category}:N",
+                title=None,
+                sort="-x",
+                axis=alt.Axis(labelLimit=180),
+            ),
+            tooltip=[
+                alt.Tooltip(f"{category}:N", title=category),
+                alt.Tooltip(f"{value}:Q", title=value),
+            ],
+        )
+        .properties(height=max(180, min(340, 42 * len(data))), title=title)
+    )
+
+    st.altair_chart(chart, use_container_width=True)
+
+
+def render_donut(data, category, value, title=None):
+    if data is None or data.empty:
+        st.info("Δεν υπάρχουν δεδομένα.")
+        return
+
+    chart = (
+        alt.Chart(data)
+        .mark_arc(innerRadius=62, outerRadius=95)
+        .encode(
+            theta=alt.Theta(f"{value}:Q"),
+            color=alt.Color(
+                f"{category}:N",
+                legend=alt.Legend(title=None, orient="bottom"),
+            ),
+            tooltip=[
+                alt.Tooltip(f"{category}:N", title=category),
+                alt.Tooltip(f"{value}:Q", title=value),
+            ],
+        )
+        .properties(height=300, title=title)
+    )
+
+    st.altair_chart(chart, use_container_width=True)
+
+
+def render_vertical_bar(data, category, value, title=None):
+    if data is None or data.empty:
+        st.info("Δεν υπάρχουν δεδομένα.")
+        return
+
+    chart = (
+        alt.Chart(data)
+        .mark_bar(cornerRadiusTopLeft=7, cornerRadiusTopRight=7)
+        .encode(
+            x=alt.X(
+                f"{category}:N",
+                title=None,
+                sort=None,
+                axis=alt.Axis(labelAngle=-20, labelLimit=120),
+            ),
+            y=alt.Y(
+                f"{value}:Q",
+                title=None,
+                axis=alt.Axis(grid=True, tickMinStep=1),
+            ),
+            tooltip=[
+                alt.Tooltip(f"{category}:N", title=category),
+                alt.Tooltip(f"{value}:Q", title=value),
+            ],
+        )
+        .properties(height=300, title=title)
+    )
+
+    st.altair_chart(chart, use_container_width=True)
+
+
 # ============================================================
 # DATABASE INITIALIZATION
 # ============================================================
@@ -626,9 +715,15 @@ if page == "📊 Dashboard":
                 .fillna("Χωρίς τμήμα")
                 .replace("", "Χωρίς τμήμα")
                 .value_counts()
+                .rename_axis("Τμήμα")
+                .reset_index(name="Εργαζόμενοι")
             )
 
-            st.bar_chart(department_counts, use_container_width=True)
+            render_horizontal_bar(
+                department_counts,
+                "Τμήμα",
+                "Εργαζόμενοι",
+            )
         else:
             st.info("Δεν υπάρχουν εργαζόμενοι.")
 
@@ -642,9 +737,15 @@ if page == "📊 Dashboard":
                 workforce_df["status"]
                 .fillna("Άγνωστη κατάσταση")
                 .value_counts()
+                .rename_axis("Κατάσταση")
+                .reset_index(name="Εργαζόμενοι")
             )
 
-            st.bar_chart(status_counts, use_container_width=True)
+            render_donut(
+                status_counts,
+                "Κατάσταση",
+                "Εργαζόμενοι",
+            )
         else:
             st.info("Δεν υπάρχουν δεδομένα.")
 
@@ -746,9 +847,13 @@ if page == "📊 Dashboard":
                     "Λόγος": list(reason_counts.keys()),
                     "Αποχωρήσεις": list(reason_counts.values()),
                 }
-            ).set_index("Λόγος")
+            )
 
-            st.bar_chart(reason_df, use_container_width=True)
+            render_horizontal_bar(
+                reason_df,
+                "Λόγος",
+                "Αποχωρήσεις",
+            )
 
         with turnover_right:
             st.markdown("#### Πρόσφατες αποχωρήσεις")
@@ -838,9 +943,13 @@ if page == "📊 Dashboard":
                         for status in recruitment_statuses
                     ],
                 }
-            ).set_index("Στάδιο")
+            )
 
-            st.bar_chart(pipeline_df, use_container_width=True)
+            render_horizontal_bar(
+                pipeline_df,
+                "Στάδιο",
+                "Υποψήφιοι",
+            )
         else:
             st.info("Δεν υπάρχουν υποψήφιοι.")
 
@@ -935,8 +1044,15 @@ if page == "📊 Dashboard":
                 leave_df["status"]
                 .fillna("Άγνωστη κατάσταση")
                 .value_counts()
+                .rename_axis("Κατάσταση")
+                .reset_index(name="Αιτήσεις")
             )
-            st.bar_chart(leave_counts, use_container_width=True)
+
+            render_donut(
+                leave_counts,
+                "Κατάσταση",
+                "Αιτήσεις",
+            )
         else:
             st.info("Δεν υπάρχουν αιτήματα άδειας.")
 
@@ -987,9 +1103,13 @@ if page == "📊 Dashboard":
                         onboarding_completed,
                     ],
                 }
-            ).set_index("Κατάσταση")
+            )
 
-            st.bar_chart(onboarding_chart, use_container_width=True)
+            render_vertical_bar(
+                onboarding_chart,
+                "Κατάσταση",
+                "Πλήθος",
+            )
         else:
             st.info("Δεν υπάρχουν onboarding διαδικασίες.")
 
