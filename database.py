@@ -719,3 +719,81 @@ def get_hr_statistics():
         "total_leaves": total_leaves,
         "pending_leaves": pending_leaves,
     }
+
+def create_employee_from_candidate(candidate_id):
+    connection = get_connection()
+    cursor = connection.cursor()
+
+    cursor.execute("""
+        SELECT *
+        FROM candidates
+        WHERE id = %s
+        LIMIT 1
+    """, (candidate_id,))
+
+    candidate = cursor.fetchone()
+
+    if candidate is None:
+        cursor.close()
+        connection.close()
+        raise ValueError("Ο υποψήφιος δεν βρέθηκε.")
+
+    if candidate["status"] != "Προσλήφθηκε":
+        cursor.close()
+        connection.close()
+        raise ValueError(
+            "Ο υποψήφιος πρέπει πρώτα να έχει κατάσταση «Προσλήφθηκε»."
+        )
+
+    email = candidate["email"]
+
+    if email:
+        cursor.execute("""
+            SELECT id
+            FROM employees
+            WHERE LOWER(email) = LOWER(%s)
+            LIMIT 1
+        """, (email,))
+
+        existing_employee = cursor.fetchone()
+
+        if existing_employee:
+            cursor.close()
+            connection.close()
+            return existing_employee["id"]
+
+    cursor.execute("""
+        INSERT INTO employees (
+            first_name,
+            last_name,
+            email,
+            phone,
+            position,
+            department,
+            hire_date,
+            status
+        )
+        VALUES (
+            %s, %s, %s, %s,
+            %s, %s, %s, %s
+        )
+        RETURNING id
+    """, (
+        candidate["first_name"],
+        candidate["last_name"],
+        email,
+        candidate["phone"],
+        candidate["position"],
+        None,
+        candidate["application_date"],
+        "Ενεργός",
+    ))
+
+    employee_id = cursor.fetchone()["id"]
+
+    connection.commit()
+
+    cursor.close()
+    connection.close()
+
+    return employee_id
