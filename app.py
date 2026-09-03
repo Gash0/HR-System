@@ -1592,79 +1592,83 @@ elif page == "👥 Εργαζόμενοι":
         )
 
 
+
+
+
 # ============================================================
-# RECRUITMENT
+# RECRUITMENT 2.0
 # ============================================================
 
 elif page == "📋 Recruitment":
 
     if not IS_HR:
-
         st.error(
             "⛔ Δεν έχεις δικαίωμα πρόσβασης."
         )
-
         st.stop()
 
-    st.title(
-        "📋 Recruitment"
-    )
+    st.title("📋 Recruitment 2.0")
 
     st.caption(
-        "Διαχείριση υποψηφίων και διαδικασίας προσλήψεων."
+        "Διαχείριση υποψηφίων και pipeline προσλήψεων."
     )
 
-    # --------------------------------------------------------
+    candidates = get_candidates()
+
+    # ========================================================
     # ADD CANDIDATE
-    # --------------------------------------------------------
+    # ========================================================
 
-    st.subheader(
-        "➕ Προσθήκη υποψηφίου"
-    )
+    st.subheader("➕ Νέος υποψήφιος")
 
-    with st.form(
-        "candidate_form"
-    ):
+    with st.form("candidate_form"):
 
-        first_name = st.text_input(
-            "Όνομα"
-        )
+        col1, col2 = st.columns(2)
 
-        last_name = st.text_input(
-            "Επώνυμο"
-        )
+        with col1:
 
-        email = st.text_input(
-            "Email"
-        )
+            first_name = st.text_input(
+                "Όνομα"
+            )
 
-        phone = st.text_input(
-            "Τηλέφωνο"
-        )
+            last_name = st.text_input(
+                "Επώνυμο"
+            )
 
-        position = st.text_input(
-            "Θέση εργασίας"
-        )
+            email = st.text_input(
+                "Email"
+            )
 
-        application_date = st.date_input(
-            "Ημερομηνία αίτησης",
-            value=date.today(),
-            format="DD/MM/YYYY",
-        )
+            phone = st.text_input(
+                "Τηλέφωνο"
+            )
 
-        status = st.selectbox(
-            "Κατάσταση",
-            [
-                "Νέα αίτηση",
-                "Σε αξιολόγηση",
-                "Συνέντευξη",
-                "Προσλήφθηκε",
-                "Απορρίφθηκε",
-            ],
-        )
+        with col2:
+
+            position = st.text_input(
+                "Θέση εργασίας"
+            )
+
+            application_date = st.date_input(
+                "Ημερομηνία αίτησης",
+                value=date.today(),
+                format="DD/MM/YYYY",
+            )
+
+            status = st.selectbox(
+                "Αρχική κατάσταση",
+                [
+                    "Νέα αίτηση",
+                    "Σε αξιολόγηση",
+                    "Συνέντευξη",
+                    "Προσφορά",
+                    "Προσλήφθηκε",
+                    "Απορρίφθηκε",
+                ],
+            )
 
         submitted = st.form_submit_button(
-            "💾 Αποθήκευση υποψηφίου"
+            "💾 Προσθήκη υποψηφίου"
         )
 
         if submitted:
@@ -1702,6 +1706,337 @@ elif page == "📋 Recruitment":
                 st.rerun()
 
     st.divider()
+
+    # ========================================================
+    # PIPELINE SUMMARY
+    # ========================================================
+
+    st.subheader("🎯 Recruitment Pipeline")
+
+    pipeline_statuses = [
+        "Νέα αίτηση",
+        "Σε αξιολόγηση",
+        "Συνέντευξη",
+        "Προσφορά",
+        "Προσλήφθηκε",
+        "Απορρίφθηκε",
+    ]
+
+    pipeline_counts = {
+        status: 0
+        for status in pipeline_statuses
+    }
+
+    for candidate in candidates:
+
+        candidate_status = candidate.get(
+            "status"
+        )
+
+        if candidate_status in pipeline_counts:
+            pipeline_counts[candidate_status] += 1
+
+    cols = st.columns(6)
+
+    for index, pipeline_status in enumerate(
+        pipeline_statuses
+    ):
+
+        with cols[index]:
+
+            st.metric(
+                pipeline_status,
+                pipeline_counts[pipeline_status],
+            )
+
+    st.divider()
+
+    # ========================================================
+    # SEARCH / FILTER
+    # ========================================================
+
+    st.subheader("🔎 Αναζήτηση υποψηφίων")
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+
+        search_text = st.text_input(
+            "Όνομα, επώνυμο ή email",
+            placeholder="Αναζήτηση..."
+        )
+
+    with col2:
+
+        status_filter = st.selectbox(
+            "📌 Κατάσταση",
+            ["Όλες"] + pipeline_statuses
+        )
+
+    filtered_candidates = candidates
+
+    if search_text.strip():
+
+        search_lower = (
+            search_text.strip().lower()
+        )
+
+        filtered_candidates = [
+            candidate
+            for candidate in filtered_candidates
+            if search_lower in (
+                candidate.get("first_name")
+                or ""
+            ).lower()
+            or search_lower in (
+                candidate.get("last_name")
+                or ""
+            ).lower()
+            or search_lower in (
+                candidate.get("email")
+                or ""
+            ).lower()
+        ]
+
+    if status_filter != "Όλες":
+
+        filtered_candidates = [
+            candidate
+            for candidate in filtered_candidates
+            if candidate.get("status")
+            == status_filter
+        ]
+
+    st.caption(
+        f"Βρέθηκαν {len(filtered_candidates)} υποψήφιοι."
+    )
+
+    # ========================================================
+    # KANBAN STYLE PIPELINE
+    # ========================================================
+
+    st.subheader("📊 Pipeline")
+
+    visible_pipeline = [
+        "Νέα αίτηση",
+        "Σε αξιολόγηση",
+        "Συνέντευξη",
+        "Προσφορά",
+        "Προσλήφθηκε",
+    ]
+
+    pipeline_columns = st.columns(
+        len(visible_pipeline)
+    )
+
+    for index, pipeline_status in enumerate(
+        visible_pipeline
+    ):
+
+        with pipeline_columns[index]:
+
+            st.markdown(
+                f"### {pipeline_status}"
+            )
+
+            status_candidates = [
+                candidate
+                for candidate in filtered_candidates
+                if candidate.get("status")
+                == pipeline_status
+            ]
+
+            if not status_candidates:
+
+                st.caption(
+                    "Κανένας υποψήφιος"
+                )
+
+            else:
+
+                for candidate in status_candidates:
+
+                    with st.container(
+                        border=True
+                    ):
+
+                        full_name = (
+                            f'{candidate["first_name"]} '
+                            f'{candidate["last_name"]}'
+                        )
+
+                        st.write(
+                            f"**{full_name}**"
+                        )
+
+                        st.caption(
+                            candidate.get(
+                                "position"
+                            )
+                            or "Χωρίς θέση"
+                        )
+
+                        if candidate.get("email"):
+
+                            st.write(
+                                f"📧 "
+                                f"{candidate['email']}"
+                            )
+
+                        st.write(
+                            f"📅 "
+                            f"{candidate['application_date']}"
+                        )
+
+    st.divider()
+
+    # ========================================================
+    # CANDIDATE MANAGEMENT
+    # ========================================================
+
+    st.subheader(
+        "⚙️ Διαχείριση υποψηφίου"
+    )
+
+    if filtered_candidates:
+
+        candidate_options = {
+            (
+                f'{candidate["first_name"]} '
+                f'{candidate["last_name"]} '
+                f'(ID: {candidate["id"]})'
+            ):
+            candidate
+            for candidate in filtered_candidates
+        }
+
+        selected_candidate_name = st.selectbox(
+            "Επίλεξε υποψήφιο",
+            list(candidate_options.keys()),
+            key="recruitment_candidate_selector",
+        )
+
+        selected_candidate = candidate_options[
+            selected_candidate_name
+        ]
+
+        st.markdown(
+            f"### 👤 "
+            f"{selected_candidate['first_name']} "
+            f"{selected_candidate['last_name']}"
+        )
+
+        col1, col2 = st.columns(2)
+
+        with col1:
+
+            st.write(
+                f"**Email:** "
+                f"{selected_candidate['email'] or '-'}"
+            )
+
+            st.write(
+                f"**Τηλέφωνο:** "
+                f"{selected_candidate['phone'] or '-'}"
+            )
+
+            st.write(
+                f"**Θέση:** "
+                f"{selected_candidate['position'] or '-'}"
+            )
+
+        with col2:
+
+            st.write(
+                f"**Ημερομηνία αίτησης:** "
+                f"{selected_candidate['application_date']}"
+            )
+
+            st.write(
+                f"**Τρέχουσα κατάσταση:** "
+                f"{selected_candidate['status']}"
+            )
+
+        new_status = st.selectbox(
+            "🔄 Νέα κατάσταση",
+            pipeline_statuses,
+            index=(
+                pipeline_statuses.index(
+                    selected_candidate["status"]
+                )
+                if selected_candidate["status"]
+                in pipeline_statuses
+                else 0
+            ),
+            key="candidate_new_status",
+        )
+
+        if st.button(
+            "💾 Ενημέρωση κατάστασης",
+            key="update_candidate_status",
+        ):
+
+            st.warning(
+                "Η αλλαγή status απαιτεί "
+                "τη νέα συνάρτηση update_candidate(), "
+                "την οποία θα προσθέσουμε στο database.py "
+                "στο επόμενο βήμα."
+            )
+
+    else:
+
+        st.info(
+            "Δεν υπάρχουν υποψήφιοι με τα συγκεκριμένα φίλτρα."
+        )
+
+    st.divider()
+
+    # ========================================================
+    # RECRUITMENT TABLE
+    # ========================================================
+
+    st.subheader(
+        "📋 Πλήρης λίστα υποψηφίων"
+    )
+
+    if filtered_candidates:
+
+        candidate_table = []
+
+        for candidate in filtered_candidates:
+
+            candidate_table.append(
+                {
+                    "ID":
+                        candidate["id"],
+                    "Όνομα":
+                        candidate["first_name"],
+                    "Επώνυμο":
+                        candidate["last_name"],
+                    "Email":
+                        candidate["email"],
+                    "Θέση":
+                        candidate["position"],
+                    "Ημερομηνία":
+                        candidate["application_date"],
+                    "Κατάσταση":
+                        candidate["status"],
+                }
+            )
+
+        st.dataframe(
+            pd.DataFrame(candidate_table),
+            use_container_width=True,
+            hide_index=True,
+        )
+
+    else:
+
+        st.info(
+            "Δεν υπάρχουν υποψήφιοι."
+        )
+
+
 
     # --------------------------------------------------------
     # CANDIDATE LIST
