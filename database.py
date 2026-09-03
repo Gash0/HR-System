@@ -185,7 +185,7 @@ def update_employee(
     finally:
         conn.close()
 
-        
+
 def delete_employee(employee_id):
     connection = get_connection()
     cursor = connection.cursor()
