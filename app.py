@@ -16,6 +16,7 @@ from database import (
     create_recruitment_table,
     add_candidate,
     get_candidates,
+    update_candidate,
     create_onboarding_table,
     create_onboarding,
     get_onboarding,
@@ -1976,12 +1977,42 @@ elif page == "📋 Recruitment":
             key="update_candidate_status",
         ):
 
-            st.warning(
-                "Η αλλαγή status απαιτεί "
-                "τη νέα συνάρτηση update_candidate(), "
-                "την οποία θα προσθέσουμε στο database.py "
-                "στο επόμενο βήμα."
-            )
+            if new_status == selected_candidate["status"]:
+
+                st.info(
+                    "Ο υποψήφιος βρίσκεται ήδη σε αυτή την κατάσταση."
+                )
+
+            else:
+
+                try:
+
+                    update_candidate(
+                        selected_candidate["id"],
+                        new_status
+                    )
+
+                    st.success(
+                        f"✅ Η κατάσταση του "
+                        f"{selected_candidate['first_name']} "
+                        f"{selected_candidate['last_name']} "
+                        f"ενημερώθηκε σε «{new_status}»."
+                    )
+
+                    st.rerun()
+
+                except Exception as e:
+
+                    st.error(
+                        f"❌ Σφάλμα ενημέρωσης: {e}"
+                    )
+
+                    st.warning(
+                        "Η αλλαγή status απαιτεί "
+                        "τη νέα συνάρτηση update_candidate(), "
+                        "την οποία θα προσθέσουμε στο database.py "
+                        "στο επόμενο βήμα."
+                    )
 
     else:
 

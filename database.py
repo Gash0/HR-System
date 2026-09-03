@@ -529,3 +529,19 @@ def update_employee(
 
     connection.commit()
     connection.close()
+
+def update_candidate(candidate_id, status):
+    connection = get_connection()
+    cursor = connection.cursor()
+
+    cursor.execute(
+        """
+        UPDATE candidates
+        SET status = %s
+        WHERE id = %s
+        """,
+        (status, candidate_id)
+    )
+
+    connection.commit()
+    connection.close()
