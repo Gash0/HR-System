@@ -1597,7 +1597,7 @@ elif page == "👥 Εργαζόμενοι":
 
 
 # ============================================================
-# RECRUITMENT 2.0
+# RECRUITMENT 
 # ============================================================
 
 elif page == "📋 Recruitment":
@@ -1608,7 +1608,7 @@ elif page == "📋 Recruitment":
         )
         st.stop()
 
-    st.title("📋 Recruitment 2.0")
+    st.title("📋 Recruitment ")
 
     st.caption(
         "Διαχείριση υποψηφίων και pipeline προσλήψεων."
