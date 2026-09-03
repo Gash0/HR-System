@@ -209,6 +209,42 @@ def create_recruitment_table():
         )
     """)
 
+    # Νέα πεδία Recruitment
+    cursor.execute("""
+        ALTER TABLE candidates
+        ADD COLUMN IF NOT EXISTS interview_date TEXT
+    """)
+
+    cursor.execute("""
+        ALTER TABLE candidates
+        ADD COLUMN IF NOT EXISTS rating INTEGER
+    """)
+
+    cursor.execute("""
+        ALTER TABLE candidates
+        ADD COLUMN IF NOT EXISTS notes TEXT
+    """)
+
+    cursor.execute("""
+        ALTER TABLE candidates
+        ADD COLUMN IF NOT EXISTS recruiter TEXT
+    """)
+
+    # Ιστορικό αλλαγών υποψηφίων
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS candidate_history (
+            id SERIAL PRIMARY KEY,
+            candidate_id INTEGER NOT NULL,
+            old_status TEXT,
+            new_status TEXT NOT NULL,
+            changed_by TEXT,
+            changed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (candidate_id)
+                REFERENCES candidates(id)
+                ON DELETE CASCADE
+        )
+    """)
+
     connection.commit()
     cursor.close()
     connection.close()
@@ -222,6 +258,10 @@ def add_candidate(
     position,
     application_date,
     status="Νέα αίτηση",
+    interview_date=None,
+    rating=None,
+    notes=None,
+    recruiter=None,
 ):
     connection = get_connection()
     cursor = connection.cursor()
@@ -234,9 +274,17 @@ def add_candidate(
             phone,
             position,
             application_date,
-            status
+            status,
+            interview_date,
+            rating,
+            notes,
+            recruiter
         )
-        VALUES (%s, %s, %s, %s, %s, %s, %s)
+        VALUES (
+            %s, %s, %s, %s, %s,
+            %s, %s, %s, %s, %s, %s
+        )
+        RETURNING id
     """, (
         first_name,
         last_name,
@@ -245,9 +293,32 @@ def add_candidate(
         position,
         application_date,
         status,
+        interview_date,
+        rating,
+        notes,
+        recruiter,
+    ))
+
+    candidate_id = cursor.fetchone()["id"]
+
+    # Αρχική εγγραφή στο history
+    cursor.execute("""
+        INSERT INTO candidate_history (
+            candidate_id,
+            old_status,
+            new_status,
+            changed_by
+        )
+        VALUES (%s, %s, %s, %s)
+    """, (
+        candidate_id,
+        None,
+        status,
+        recruiter,
     ))
 
     connection.commit()
+
     cursor.close()
     connection.close()
 
@@ -270,22 +341,96 @@ def get_candidates():
     return candidates
 
 
-def update_candidate(candidate_id, status):
+def update_candidate(
+    candidate_id,
+    status,
+    changed_by=None,
+    interview_date=None,
+    rating=None,
+    notes=None,
+    recruiter=None,
+):
     connection = get_connection()
     cursor = connection.cursor()
 
     cursor.execute("""
+        SELECT status
+        FROM candidates
+        WHERE id = %s
+    """, (candidate_id,))
+
+    candidate = cursor.fetchone()
+
+    if candidate is None:
+        connection.close()
+        raise ValueError("Ο υποψήφιος δεν βρέθηκε.")
+
+    old_status = candidate["status"]
+
+    cursor.execute("""
         UPDATE candidates
-        SET status = %s
+        SET
+            status = %s,
+            interview_date = %s,
+            rating = %s,
+            notes = %s,
+            recruiter = %s
         WHERE id = %s
     """, (
         status,
+        interview_date,
+        rating,
+        notes,
+        recruiter,
         candidate_id,
     ))
 
+    if old_status != status:
+
+        cursor.execute("""
+            INSERT INTO candidate_history (
+                candidate_id,
+                old_status,
+                new_status,
+                changed_by
+            )
+            VALUES (%s, %s, %s, %s)
+        """, (
+            candidate_id,
+            old_status,
+            status,
+            changed_by,
+        ))
+
     connection.commit()
+
     cursor.close()
     connection.close()
+
+
+def get_candidate_history(candidate_id):
+    connection = get_connection()
+    cursor = connection.cursor()
+
+    cursor.execute("""
+        SELECT
+            id,
+            candidate_id,
+            old_status,
+            new_status,
+            changed_by,
+            changed_at
+        FROM candidate_history
+        WHERE candidate_id = %s
+        ORDER BY changed_at DESC, id DESC
+    """, (candidate_id,))
+
+    history = cursor.fetchall()
+
+    cursor.close()
+    connection.close()
+
+    return history
 
 
 # ============================================================
@@ -574,4 +719,3 @@ def get_hr_statistics():
         "total_leaves": total_leaves,
         "pending_leaves": pending_leaves,
     }
-
