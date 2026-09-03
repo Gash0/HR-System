@@ -497,8 +497,11 @@ def render_horizontal_bar(data, category, value, title=None):
                 alt.Tooltip(f"{value}:Q", title=value),
             ],
         )
-        .properties(height=max(180, min(340, 42 * len(data))), title=title)
+        .properties(height=max(180, min(340, 42 * len(data))))
     )
+
+    if title:
+        chart = chart.properties(title=title)
 
     st.altair_chart(chart, use_container_width=True)
 
@@ -522,8 +525,11 @@ def render_donut(data, category, value, title=None):
                 alt.Tooltip(f"{value}:Q", title=value),
             ],
         )
-        .properties(height=300, title=title)
+        .properties(height=300)
     )
+
+    if title:
+        chart = chart.properties(title=title)
 
     st.altair_chart(chart, use_container_width=True)
 
@@ -553,8 +559,11 @@ def render_vertical_bar(data, category, value, title=None):
                 alt.Tooltip(f"{value}:Q", title=value),
             ],
         )
-        .properties(height=300, title=title)
+        .properties(height=300)
     )
+
+    if title:
+        chart = chart.properties(title=title)
 
     st.altair_chart(chart, use_container_width=True)
 
