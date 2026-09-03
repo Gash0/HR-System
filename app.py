@@ -983,6 +983,80 @@ else:
     )
 
 
+    # --------------------------------------------------------
+# LEAVES PER MONTH
+# --------------------------------------------------------
+
+st.subheader(
+    "🏖️ Άδειες ανά μήνα"
+)
+
+leaves_per_month = {}
+
+for leave in leaves:
+
+    start_date_value = leave.get(
+        "start_date"
+    )
+
+    if start_date_value:
+
+        leave_date_obj = parse_date(
+            start_date_value
+        )
+
+        month_key = leave_date_obj.strftime(
+            "%Y-%m"
+        )
+
+        leaves_per_month[
+            month_key
+        ] = (
+            leaves_per_month.get(
+                month_key,
+                0,
+            )
+            + 1
+        )
+
+
+if leaves_per_month:
+
+    leaves_month_df = pd.DataFrame(
+        {
+            "Μήνας": list(
+                leaves_per_month.keys()
+            ),
+            "Άδειες": list(
+                leaves_per_month.values()
+            ),
+        }
+    )
+
+    leaves_month_df = leaves_month_df.sort_values(
+        "Μήνας"
+    )
+
+    leaves_month_df = leaves_month_df.set_index(
+        "Μήνας"
+    )
+
+    st.bar_chart(
+        leaves_month_df
+    )
+
+else:
+
+    st.info(
+        "Δεν υπάρχουν δεδομένα αδειών."
+    )
+
+
+st.markdown(
+    "---"
+)
+
+
 # ============================================================
 # EMPLOYEES
 # ============================================================
