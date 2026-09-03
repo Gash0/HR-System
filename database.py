@@ -11,19 +11,13 @@ from psycopg.rows import dict_row
 
 def get_connection():
     """
-    Σύνδεση με PostgreSQL / Supabase.
-
-    Υποστηρίζει:
-    1. DATABASE_URL
-    2. [database]
-    3. [postgres]
-    4. [supabase]
-    5. Flat PostgreSQL secrets
+    Σύνδεση με Supabase PostgreSQL / Streamlit Secrets.
+    Υποστηρίζει connection URL ή ξεχωριστά στοιχεία.
     """
 
-    # --------------------------------------------------------
-    # 1. DATABASE_URL
-    # --------------------------------------------------------
+    # ========================================================
+    # 1. DATABASE_URL στο root των secrets
+    # ========================================================
 
     database_url = st.secrets.get("DATABASE_URL")
 
@@ -33,112 +27,158 @@ def get_connection():
             row_factory=dict_row,
         )
 
-    # --------------------------------------------------------
+    # ========================================================
     # 2. [database]
-    # --------------------------------------------------------
+    # ========================================================
 
     if "database" in st.secrets:
         db = st.secrets["database"]
 
-        return psycopg.connect(
-            host=db["host"],
-            port=int(db.get("port", 5432)),
-            dbname=db.get(
-                "dbname",
-                db.get("database", "postgres"),
-            ),
-            user=db["user"],
-            password=db["password"],
-            sslmode=db.get("sslmode", "require"),
-            row_factory=dict_row,
+        connection_url = (
+            db.get("url")
+            or db.get("database_url")
+            or db.get("connection_string")
+            or db.get("uri")
         )
 
-    # --------------------------------------------------------
+        if connection_url:
+            return psycopg.connect(
+                connection_url,
+                row_factory=dict_row,
+            )
+
+        host = db.get("host")
+        user = db.get("user")
+        password = db.get("password")
+
+        if host and user and password:
+            return psycopg.connect(
+                host=host,
+                port=int(db.get("port", 5432)),
+                dbname=db.get(
+                    "dbname",
+                    db.get("database", "postgres"),
+                ),
+                user=user,
+                password=password,
+                sslmode=db.get("sslmode", "require"),
+                row_factory=dict_row,
+            )
+
+    # ========================================================
     # 3. [postgres]
-    # --------------------------------------------------------
+    # ========================================================
 
     if "postgres" in st.secrets:
         db = st.secrets["postgres"]
 
-        return psycopg.connect(
-            host=db["host"],
-            port=int(db.get("port", 5432)),
-            dbname=db.get(
-                "dbname",
-                db.get("database", "postgres"),
-            ),
-            user=db["user"],
-            password=db["password"],
-            sslmode=db.get("sslmode", "require"),
-            row_factory=dict_row,
+        connection_url = (
+            db.get("url")
+            or db.get("database_url")
+            or db.get("connection_string")
+            or db.get("uri")
         )
 
-    # --------------------------------------------------------
+        if connection_url:
+            return psycopg.connect(
+                connection_url,
+                row_factory=dict_row,
+            )
+
+        host = db.get("host")
+        user = db.get("user")
+        password = db.get("password")
+
+        if host and user and password:
+            return psycopg.connect(
+                host=host,
+                port=int(db.get("port", 5432)),
+                dbname=db.get(
+                    "dbname",
+                    db.get("database", "postgres"),
+                ),
+                user=user,
+                password=password,
+                sslmode=db.get("sslmode", "require"),
+                row_factory=dict_row,
+            )
+
+    # ========================================================
     # 4. [supabase]
-    # --------------------------------------------------------
+    # ========================================================
 
     if "supabase" in st.secrets:
         db = st.secrets["supabase"]
 
-        # Αν υπάρχει database_url μέσα στο [supabase]
-        if db.get("database_url"):
+        connection_url = (
+            db.get("url")
+            or db.get("database_url")
+            or db.get("connection_string")
+            or db.get("uri")
+        )
+
+        if connection_url:
             return psycopg.connect(
-                db["database_url"],
+                connection_url,
                 row_factory=dict_row,
             )
 
-        return psycopg.connect(
-            host=db["host"],
-            port=int(db.get("port", 5432)),
-            dbname=db.get(
-                "dbname",
-                db.get("database", "postgres"),
-            ),
-            user=db["user"],
-            password=db["password"],
-            sslmode=db.get("sslmode", "require"),
-            row_factory=dict_row,
-        )
+        host = db.get("host")
+        user = db.get("user")
+        password = db.get("password")
 
-    # --------------------------------------------------------
+        if host and user and password:
+            return psycopg.connect(
+                host=host,
+                port=int(db.get("port", 5432)),
+                dbname=db.get(
+                    "dbname",
+                    db.get("database", "postgres"),
+                ),
+                user=user,
+                password=password,
+                sslmode=db.get("sslmode", "require"),
+                row_factory=dict_row,
+            )
+
+    # ========================================================
     # 5. Flat secrets
-    # --------------------------------------------------------
+    # ========================================================
 
     host = (
         st.secrets.get("DB_HOST")
         or st.secrets.get("POSTGRES_HOST")
-        or st.secrets.get("SUPABASE_DB_HOST")
     )
 
     user = (
         st.secrets.get("DB_USER")
         or st.secrets.get("POSTGRES_USER")
-        or st.secrets.get("SUPABASE_DB_USER")
     )
 
     password = (
         st.secrets.get("DB_PASSWORD")
         or st.secrets.get("POSTGRES_PASSWORD")
-        or st.secrets.get("SUPABASE_DB_PASSWORD")
-    )
-
-    port = (
-        st.secrets.get("DB_PORT")
-        or st.secrets.get("POSTGRES_PORT")
-        or 5432
-    )
-
-    dbname = (
-        st.secrets.get("DB_NAME")
-        or st.secrets.get("POSTGRES_DB")
-        or "postgres"
     )
 
     if host and user and password:
         return psycopg.connect(
             host=host,
-            port=int(port),
-            dbname=dbname,
+            port=int(
+                st.secrets.get(
+                    "DB_PORT",
+                    st.secrets.get(
+                        "POSTGRES_PORT",
+                        5432,
+                    ),
+                )
+            ),
+            dbname=st.secrets.get(
+                "DB_NAME",
+                st.secrets.get(
+                    "POSTGRES_DB",
+                    "postgres",
+                ),
+            ),
             user=user,
             password=password,
             sslmode="require",
@@ -146,10 +186,8 @@ def get_connection():
         )
 
     raise RuntimeError(
-        "Δεν βρέθηκαν στοιχεία PostgreSQL στα Streamlit Secrets."
+        "Δεν βρέθηκαν σωστά στοιχεία PostgreSQL στα Streamlit Secrets."
     )
-
-
 # ============================================================
 # TEST DATABASE CONNECTION
 # ============================================================
