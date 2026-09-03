@@ -142,39 +142,50 @@ def update_employee(
     department,
     hire_date,
     status,
+    termination_date=None,
+    termination_reason=None,
 ):
-    connection = get_connection()
-    cursor = connection.cursor()
+    conn = get_connection()
 
-    cursor.execute("""
-        UPDATE employees
-        SET
-            first_name = %s,
-            last_name = %s,
-            email = %s,
-            phone = %s,
-            position = %s,
-            department = %s,
-            hire_date = %s,
-            status = %s
-        WHERE id = %s
-    """, (
-        first_name,
-        last_name,
-        email,
-        phone,
-        position,
-        department,
-        hire_date,
-        status,
-        employee_id,
-    ))
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                UPDATE employees
+                SET
+                    first_name = %s,
+                    last_name = %s,
+                    email = %s,
+                    phone = %s,
+                    position = %s,
+                    department = %s,
+                    hire_date = %s,
+                    status = %s,
+                    termination_date = %s,
+                    termination_reason = %s
+                WHERE id = %s
+                """,
+                (
+                    first_name,
+                    last_name,
+                    email,
+                    phone,
+                    position,
+                    department,
+                    hire_date,
+                    status,
+                    termination_date,
+                    termination_reason,
+                    employee_id,
+                ),
+            )
 
-    connection.commit()
-    cursor.close()
-    connection.close()
+        conn.commit()
 
+    finally:
+        conn.close()
 
+        
 def delete_employee(employee_id):
     connection = get_connection()
     cursor = connection.cursor()

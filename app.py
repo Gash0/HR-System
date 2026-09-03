@@ -26,7 +26,6 @@ from database import (
     update_leave_status,
     get_hr_statistics,
     get_time_to_hire_stats,
-
 )
 
 
@@ -51,7 +50,6 @@ def initialize_database():
     create_recruitment_table()
     create_onboarding_table()
     create_leave_table()
-
     return True
 
 
@@ -65,7 +63,6 @@ initialize_database()
 def safe_text(value):
     if value is None:
         return ""
-
     return str(value)
 
 
@@ -96,7 +93,6 @@ def parse_date(value, default=None):
                 text[:19],
                 fmt,
             ).date()
-
         except ValueError:
             pass
 
@@ -176,9 +172,7 @@ def onboarding_progress(row):
 
 
 def onboarding_status_from_row(row):
-    completed, _ = onboarding_progress(
-        row
-    )
+    completed, _ = onboarding_progress(row)
 
     if completed == 7:
         return "Ολοκληρώθηκε"
@@ -194,9 +188,8 @@ def onboarding_status_from_row(row):
 # ============================================================
 
 if not st.user.is_logged_in:
-    st.title(
-        "👥 AI HR System"
-    )
+
+    st.title("👥 AI HR System")
 
     st.write(
         "Συνδέσου με τον λογαριασμό σου."
@@ -248,6 +241,7 @@ if user_role in (
     "Admin",
     "HR",
 ):
+
     menu_options = [
         "📊 Dashboard",
         "👥 Εργαζόμενοι",
@@ -258,6 +252,7 @@ if user_role in (
     ]
 
 else:
+
     menu_options = [
         "👤 Το προφίλ μου",
         "🏖️ Οι άδειές μου",
@@ -308,10 +303,13 @@ if page == "📊 Dashboard":
 
     leaves = get_leaves()
 
-    time_to_hire_data = get_time_to_hire_stats()    
+    # ΣΗΜΑΝΤΙΚΟ:
+    # Η μεταβλητή δημιουργείται ΠΡΙΝ χρησιμοποιηθεί.
+    time_to_hire_data = get_time_to_hire_stats()
+
 
     # ========================================================
-    # WORKFORCE KPIs
+    # WORKFORCE
     # ========================================================
 
     st.subheader(
@@ -362,8 +360,8 @@ if page == "📊 Dashboard":
             )
 
 
-    kpi1, kpi2, kpi3, kpi4, kpi5 = (
-        st.columns(5)
+    kpi1, kpi2, kpi3, kpi4, kpi5 = st.columns(
+        5
     )
 
 
@@ -372,24 +370,20 @@ if page == "📊 Dashboard":
         total_employees,
     )
 
-
     kpi2.metric(
         "Ενεργοί",
         active_employees,
     )
-
 
     kpi3.metric(
         "Ανενεργοί",
         inactive_employees,
     )
 
-
     kpi4.metric(
         "Τμήματα",
         len(departments),
     )
-
 
     kpi5.metric(
         "Active Employee Rate",
@@ -522,8 +516,8 @@ if page == "📊 Dashboard":
     )
 
 
-    rec1, rec2, rec3, rec4 = (
-        st.columns(4)
+    rec1, rec2, rec3, rec4 = st.columns(
+        4
     )
 
 
@@ -532,112 +526,128 @@ if page == "📊 Dashboard":
         total_candidates,
     )
 
-
     rec2.metric(
         "Συνεντεύξεις",
         interviews,
     )
-
 
     rec3.metric(
         "Προσλήψεις",
         hired,
     )
 
-
     rec4.metric(
         "Hire Rate",
         f"{hire_rate}%",
-
     )
 
+
     # ========================================================
-# TIME TO HIRE
-# ========================================================
+    # TIME TO HIRE
+    # ========================================================
 
-st.write(
-    "### ⏱️ Time to Hire"
-)
+    st.write(
+        "### ⏱️ Time to Hire"
+    )
 
-if time_to_hire_data:
 
-    average_time_to_hire = round(
-        sum(
+    if time_to_hire_data:
+
+        average_time_to_hire = round(
+            sum(
+                item["days_to_hire"]
+                for item in time_to_hire_data
+            )
+            / len(time_to_hire_data),
+            1,
+        )
+
+
+        fastest_hire = min(
             item["days_to_hire"]
             for item in time_to_hire_data
         )
-        / len(time_to_hire_data)
-    )
 
-    fastest_hire = min(
-        item["days_to_hire"]
-        for item in time_to_hire_data
-    )
 
-    slowest_hire = max(
-        item["days_to_hire"]
-        for item in time_to_hire_data
-    )
-
-    t1, t2, t3 = st.columns(3)
-
-    t1.metric(
-        "Μέσο Time to Hire",
-        f"{average_time_to_hire} ημέρες",
-    )
-
-    t2.metric(
-        "Ταχύτερη πρόσληψη",
-        f"{fastest_hire} ημέρες",
-    )
-
-    t3.metric(
-        "Μεγαλύτερο Time to Hire",
-        f"{slowest_hire} ημέρες",
-    )
-
-    time_to_hire_df = pd.DataFrame(
-        [
-            {
-                "Υποψήφιος": (
-                    f"{item['first_name']} "
-                    f"{item['last_name']}"
-                ),
-                "Θέση": item["position"] or "-",
-                "Ημερομηνία αίτησης": (
-                    item["application_date"].strftime(
-                        "%d/%m/%Y"
-                    )
-                ),
-                "Ημερομηνία πρόσληψης": (
-                    item["hired_date"].strftime(
-                        "%d/%m/%Y"
-                    )
-                ),
-                "Time to Hire": (
-                    f"{item['days_to_hire']} ημέρες"
-                ),
-            }
+        slowest_hire = max(
+            item["days_to_hire"]
             for item in time_to_hire_data
-        ]
-    )
-
-    st.dataframe(
-        time_to_hire_df,
-        use_container_width=True,
-        hide_index=True,
-    )
-
-else:
-
-    st.info(
-        "Δεν υπάρχουν ακόμη αρκετά δεδομένα για υπολογισμό Time to Hire."
-    )
+        )
 
 
-    # --------------------------------------------------------
-    # Recruitment Pipeline
-    # --------------------------------------------------------
+        t1, t2, t3 = st.columns(
+            3
+        )
+
+
+        t1.metric(
+            "Μέσο Time to Hire",
+            f"{average_time_to_hire} ημέρες",
+        )
+
+
+        t2.metric(
+            "Ταχύτερη πρόσληψη",
+            f"{fastest_hire} ημέρες",
+        )
+
+
+        t3.metric(
+            "Μεγαλύτερο Time to Hire",
+            f"{slowest_hire} ημέρες",
+        )
+
+
+        time_to_hire_df = pd.DataFrame(
+            [
+                {
+                    "Υποψήφιος": (
+                        f"{item['first_name']} "
+                        f"{item['last_name']}"
+                    ),
+                    "Θέση": (
+                        item.get("position")
+                        or "-"
+                    ),
+                    "Ημερομηνία αίτησης": (
+                        item[
+                            "application_date"
+                        ].strftime(
+                            "%d/%m/%Y"
+                        )
+                    ),
+                    "Ημερομηνία πρόσληψης": (
+                        item[
+                            "hired_date"
+                        ].strftime(
+                            "%d/%m/%Y"
+                        )
+                    ),
+                    "Time to Hire": (
+                        f"{item['days_to_hire']} ημέρες"
+                    ),
+                }
+                for item in time_to_hire_data
+            ]
+        )
+
+
+        st.dataframe(
+            time_to_hire_df,
+            use_container_width=True,
+            hide_index=True,
+        )
+
+    else:
+
+        st.info(
+            "Δεν υπάρχουν ακόμη αρκετά δεδομένα για υπολογισμό Time to Hire."
+        )
+
+
+    # ========================================================
+    # RECRUITMENT PIPELINE
+    # ========================================================
 
     st.write(
         "### Recruitment Pipeline"
@@ -669,9 +679,9 @@ else:
         )
 
 
-    # --------------------------------------------------------
-    # Recruitment Conversion Funnel
-    # --------------------------------------------------------
+    # ========================================================
+    # RECRUITMENT FUNNEL
+    # ========================================================
 
     st.write(
         "### 📊 Recruitment Conversion Funnel"
@@ -718,18 +728,15 @@ else:
         f"{review_rate}%",
     )
 
-
     f2.metric(
         "Interview Rate",
         f"{interview_rate}%",
     )
 
-
     f3.metric(
         "Offer Rate",
         f"{offer_rate}%",
     )
-
 
     f4.metric(
         "Hire Rate",
@@ -750,13 +757,9 @@ else:
 
 
     onboarding_not_started = 0
-
     onboarding_in_progress = 0
-
     onboarding_completed = 0
-
     overdue_onboarding = 0
-
     total_progress = 0
 
 
@@ -768,10 +771,7 @@ else:
             )
         )
 
-        total_progress += (
-            progress_percent
-        )
-
+        total_progress += progress_percent
 
         onboarding_status = (
             onboarding_status_from_row(
@@ -830,8 +830,8 @@ else:
     )
 
 
-    onb1, onb2, onb3, onb4, onb5, onb6 = (
-        st.columns(6)
+    onb1, onb2, onb3, onb4, onb5, onb6 = st.columns(
+        6
     )
 
 
@@ -840,30 +840,25 @@ else:
         onboarding_not_started,
     )
 
-
     onb2.metric(
         "Σε εξέλιξη",
         onboarding_in_progress,
     )
-
 
     onb3.metric(
         "Ολοκληρώθηκαν",
         onboarding_completed,
     )
 
-
     onb4.metric(
         "Μέση πρόοδος",
         f"{average_onboarding_progress}%",
     )
 
-
     onb5.metric(
         "Εκπρόθεσμα",
         overdue_onboarding,
     )
-
 
     onb6.metric(
         "Completion Rate",
@@ -890,7 +885,6 @@ else:
             "Status"
         )
 
-
         st.bar_chart(
             onboarding_chart
         )
@@ -900,7 +894,7 @@ else:
 
 
     # ========================================================
-    # LEAVE KPIs
+    # LEAVES
     # ========================================================
 
     st.subheader(
@@ -935,8 +929,8 @@ else:
     )
 
 
-    leave1, leave2, leave3, leave4 = (
-        st.columns(4)
+    leave1, leave2, leave3, leave4 = st.columns(
+        4
     )
 
 
@@ -945,18 +939,15 @@ else:
         len(leaves),
     )
 
-
     leave2.metric(
         "Εκκρεμείς",
         pending_leaves,
     )
 
-
     leave3.metric(
         "Εγκεκριμένες",
         approved_leaves,
     )
-
 
     leave4.metric(
         "Απορριφθείσες",
@@ -1043,18 +1034,15 @@ else:
             "hire_date"
         )
 
-
         if hire_date_value:
 
             hire_date_obj = parse_date(
                 hire_date_value
             )
 
-
             month_key = hire_date_obj.strftime(
                 "%Y-%m"
             )
-
 
             hires_per_month[
                 month_key
@@ -1080,21 +1068,17 @@ else:
             }
         )
 
-
         hires_df = hires_df.sort_values(
             "Μήνας"
         )
-
 
         hires_df = hires_df.set_index(
             "Μήνας"
         )
 
-
         st.bar_chart(
             hires_df
         )
-
 
     else:
 
@@ -1124,18 +1108,15 @@ else:
             "start_date"
         )
 
-
         if start_date_value:
 
             leave_date_obj = parse_date(
                 start_date_value
             )
 
-
             month_key = leave_date_obj.strftime(
                 "%Y-%m"
             )
-
 
             leaves_per_month[
                 month_key
@@ -1161,13 +1142,11 @@ else:
             }
         )
 
-
         leaves_month_df = (
             leaves_month_df.sort_values(
                 "Μήνας"
             )
         )
-
 
         leaves_month_df = (
             leaves_month_df.set_index(
@@ -1175,11 +1154,9 @@ else:
             )
         )
 
-
         st.bar_chart(
             leaves_month_df
         )
-
 
     else:
 
@@ -1214,7 +1191,6 @@ else:
             or "Χωρίς τμήμα"
         )
 
-
         department_counts[
             department
         ] = (
@@ -1241,11 +1217,9 @@ else:
             "Τμήμα"
         )
 
-
         st.bar_chart(
             department_df
         )
-
 
     else:
 
@@ -1258,7 +1232,7 @@ else:
 # EMPLOYEES
 # ============================================================
 
-if page == "👥 Εργαζόμενοι":
+elif page == "👥 Εργαζόμενοι":
 
     st.title(
         "👥 Εργαζόμενοι"
@@ -1269,6 +1243,10 @@ if page == "👥 Εργαζόμενοι":
     )
 
 
+    # ========================================================
+    # NEW EMPLOYEE
+    # ========================================================
+
     with st.expander(
         "➕ Νέος εργαζόμενος"
     ):
@@ -1278,7 +1256,9 @@ if page == "👥 Εργαζόμενοι":
             clear_on_submit=True,
         ):
 
-            col1, col2 = st.columns(2)
+            col1, col2 = st.columns(
+                2
+            )
 
             first_name = col1.text_input(
                 "Όνομα *"
@@ -1289,7 +1269,9 @@ if page == "👥 Εργαζόμενοι":
             )
 
 
-            col3, col4 = st.columns(2)
+            col3, col4 = st.columns(
+                2
+            )
 
             email = col3.text_input(
                 "Email"
@@ -1300,7 +1282,9 @@ if page == "👥 Εργαζόμενοι":
             )
 
 
-            col5, col6 = st.columns(2)
+            col5, col6 = st.columns(
+                2
+            )
 
             position = col5.text_input(
                 "Θέση"
@@ -1311,7 +1295,9 @@ if page == "👥 Εργαζόμενοι":
             )
 
 
-            col7, col8 = st.columns(2)
+            col7, col8 = st.columns(
+                2
+            )
 
             hire_date = col7.date_input(
                 "Ημερομηνία πρόσληψης",
@@ -1363,13 +1349,11 @@ if page == "👥 Εργαζόμενοι":
                             status,
                         )
 
-
                         st.success(
                             "✅ Ο εργαζόμενος προστέθηκε."
                         )
 
                         st.rerun()
-
 
                     except Exception as exc:
 
@@ -1377,6 +1361,10 @@ if page == "👥 Εργαζόμενοι":
                             f"Σφάλμα: {exc}"
                         )
 
+
+    # ========================================================
+    # EMPLOYEE LIST
+    # ========================================================
 
     employees = get_employees()
 
@@ -1386,7 +1374,6 @@ if page == "👥 Εργαζόμενοι":
         st.info(
             "Δεν υπάρχουν εργαζόμενοι."
         )
-
 
     else:
 
@@ -1401,7 +1388,6 @@ if page == "👥 Εργαζόμενοι":
         if search.strip():
 
             term = search.lower().strip()
-
 
             filtered = [
                 employee
@@ -1448,6 +1434,17 @@ if page == "👥 Εργαζόμενοι":
                     "Κατάσταση": employee.get(
                         "status"
                     ),
+                    "Αποχώρηση": format_date(
+                        employee.get(
+                            "termination_date"
+                        )
+                    ),
+                    "Λόγος αποχώρησης": (
+                        employee.get(
+                            "termination_reason"
+                        )
+                        or "-"
+                    ),
                 }
                 for employee in filtered
             ]
@@ -1464,6 +1461,10 @@ if page == "👥 Εργαζόμενοι":
         st.markdown("---")
 
 
+        # ====================================================
+        # EDIT EMPLOYEE
+        # ====================================================
+
         st.subheader(
             "✏️ Επεξεργασία εργαζομένου"
         )
@@ -1479,28 +1480,26 @@ if page == "👥 Εργαζόμενοι":
         }
 
 
-        selected_employee_label = (
-            st.selectbox(
-                "Εργαζόμενος",
-                list(
-                    employee_options.keys()
-                ),
-            )
+        selected_employee_label = st.selectbox(
+            "Εργαζόμενος",
+            list(
+                employee_options.keys()
+            ),
         )
 
 
-        selected_employee = (
-            employee_options[
-                selected_employee_label
-            ]
-        )
+        selected_employee = employee_options[
+            selected_employee_label
+        ]
 
 
         with st.form(
             f"edit_employee_{selected_employee['id']}"
         ):
 
-            col1, col2 = st.columns(2)
+            col1, col2 = st.columns(
+                2
+            )
 
 
             edit_first_name = col1.text_input(
@@ -1523,7 +1522,9 @@ if page == "👥 Εργαζόμενοι":
             )
 
 
-            col3, col4 = st.columns(2)
+            col3, col4 = st.columns(
+                2
+            )
 
 
             edit_email = col3.text_input(
@@ -1546,7 +1547,9 @@ if page == "👥 Εργαζόμενοι":
             )
 
 
-            col5, col6 = st.columns(2)
+            col5, col6 = st.columns(
+                2
+            )
 
 
             edit_position = col5.text_input(
@@ -1569,7 +1572,9 @@ if page == "👥 Εργαζόμενοι":
             )
 
 
-            col7, col8 = st.columns(2)
+            col7, col8 = st.columns(
+                2
+            )
 
 
             edit_hire_date = col7.date_input(
@@ -1611,11 +1616,78 @@ if page == "👥 Εργαζόμενοι":
             )
 
 
-            save_changes = (
-                st.form_submit_button(
-                    "💾 Αποθήκευση αλλαγών",
-                    type="primary",
+            # =================================================
+            # TERMINATION DETAILS
+            # =================================================
+
+            termination_date_value = None
+            termination_reason_value = None
+
+
+            if edit_status == "Ανενεργός":
+
+                st.markdown(
+                    "#### 📉 Στοιχεία αποχώρησης"
                 )
+
+
+                term1, term2 = st.columns(
+                    2
+                )
+
+
+                termination_date_value = term1.date_input(
+                    "Ημερομηνία αποχώρησης",
+                    value=parse_date(
+                        selected_employee.get(
+                            "termination_date"
+                        ),
+                        date.today(),
+                    ),
+                    format="DD/MM/YYYY",
+                )
+
+
+                termination_reasons = [
+                    "Παραίτηση",
+                    "Απόλυση",
+                    "Λήξη σύμβασης",
+                    "Συνταξιοδότηση",
+                    "Άλλο",
+                ]
+
+
+                existing_reason = (
+                    selected_employee.get(
+                        "termination_reason"
+                    )
+                )
+
+
+                reason_index = 0
+
+
+                if (
+                    existing_reason
+                    in termination_reasons
+                ):
+                    reason_index = (
+                        termination_reasons.index(
+                            existing_reason
+                        )
+                    )
+
+
+                termination_reason_value = term2.selectbox(
+                    "Λόγος αποχώρησης",
+                    termination_reasons,
+                    index=reason_index,
+                )
+
+
+            save_changes = st.form_submit_button(
+                "💾 Αποθήκευση αλλαγών",
+                type="primary",
             )
 
 
@@ -1637,6 +1709,23 @@ if page == "👥 Εργαζόμενοι":
                             "%Y-%m-%d"
                         ),
                         edit_status,
+                        (
+                            termination_date_value.strftime(
+                                "%Y-%m-%d"
+                            )
+                            if (
+                                edit_status
+                                == "Ανενεργός"
+                                and termination_date_value
+                            )
+                            else None
+                        ),
+                        (
+                            termination_reason_value
+                            if edit_status
+                            == "Ανενεργός"
+                            else None
+                        ),
                     )
 
 
@@ -1645,7 +1734,6 @@ if page == "👥 Εργαζόμενοι":
                     )
 
                     st.rerun()
-
 
                 except Exception as exc:
 
@@ -1656,7 +1744,10 @@ if page == "👥 Εργαζόμενοι":
 
         if st.button(
             "🗑️ Διαγραφή εργαζομένου",
-            key=f"delete_employee_{selected_employee['id']}",
+            key=(
+                f"delete_employee_"
+                f"{selected_employee['id']}"
+            ),
         ):
 
             try:
@@ -1667,13 +1758,11 @@ if page == "👥 Εργαζόμενοι":
                     ]
                 )
 
-
                 st.success(
                     "✅ Ο εργαζόμενος διαγράφηκε."
                 )
 
                 st.rerun()
-
 
             except Exception as exc:
 
@@ -1707,6 +1796,10 @@ elif page == "📋 Recruitment":
     ]
 
 
+    # ========================================================
+    # NEW CANDIDATE
+    # ========================================================
+
     with st.expander(
         "➕ Νέος υποψήφιος"
     ):
@@ -1716,39 +1809,39 @@ elif page == "📋 Recruitment":
             clear_on_submit=True,
         ):
 
-            c1, c2 = st.columns(2)
-
+            c1, c2 = st.columns(
+                2
+            )
 
             first_name = c1.text_input(
                 "Όνομα *"
             )
-
 
             last_name = c2.text_input(
                 "Επώνυμο *"
             )
 
 
-            c3, c4 = st.columns(2)
-
+            c3, c4 = st.columns(
+                2
+            )
 
             email = c3.text_input(
                 "Email"
             )
-
 
             phone = c4.text_input(
                 "Τηλέφωνο"
             )
 
 
-            c5, c6 = st.columns(2)
-
+            c5, c6 = st.columns(
+                2
+            )
 
             position = c5.text_input(
                 "Θέση"
             )
-
 
             application_date = c6.date_input(
                 "Ημερομηνία αίτησης",
@@ -1776,11 +1869,9 @@ elif page == "📋 Recruitment":
             )
 
 
-            submitted = (
-                st.form_submit_button(
-                    "💾 Προσθήκη υποψηφίου",
-                    type="primary",
-                )
+            submitted = st.form_submit_button(
+                "💾 Προσθήκη υποψηφίου",
+                type="primary",
             )
 
 
@@ -1794,7 +1885,6 @@ elif page == "📋 Recruitment":
                     st.error(
                         "Συμπλήρωσε Όνομα και Επώνυμο."
                     )
-
 
                 else:
 
@@ -1823,13 +1913,16 @@ elif page == "📋 Recruitment":
 
                         st.rerun()
 
-
                     except Exception as exc:
 
                         st.error(
                             f"Σφάλμα: {exc}"
                         )
 
+
+    # ========================================================
+    # CANDIDATES
+    # ========================================================
 
     candidates = get_candidates()
 
@@ -1839,7 +1932,6 @@ elif page == "📋 Recruitment":
         st.info(
             "Δεν υπάρχουν υποψήφιοι."
         )
-
 
     else:
 
@@ -1878,28 +1970,25 @@ elif page == "📋 Recruitment":
             (
                 f"{candidate['first_name']} "
                 f"{candidate['last_name']} "
-                f"— {candidate.get('position') or 'Χωρίς θέση'} "
+                f"— "
+                f"{candidate.get('position') or 'Χωρίς θέση'} "
                 f"— ID {candidate['id']}"
             ): candidate
             for candidate in candidates
         }
 
 
-        selected_candidate_label = (
-            st.selectbox(
-                "Υποψήφιος",
-                list(
-                    candidate_options.keys()
-                ),
-            )
+        selected_candidate_label = st.selectbox(
+            "Υποψήφιος",
+            list(
+                candidate_options.keys()
+            ),
         )
 
 
-        selected_candidate = (
-            candidate_options[
-                selected_candidate_label
-            ]
-        )
+        selected_candidate = candidate_options[
+            selected_candidate_label
+        ]
 
 
         current_status = (
@@ -1996,11 +2085,9 @@ elif page == "📋 Recruitment":
             )
 
 
-            save_candidate = (
-                st.form_submit_button(
-                    "💾 Αποθήκευση",
-                    type="primary",
-                )
+            save_candidate = st.form_submit_button(
+                "💾 Αποθήκευση",
+                type="primary",
             )
 
 
@@ -2045,13 +2132,16 @@ elif page == "📋 Recruitment":
 
                     st.rerun()
 
-
                 except Exception as exc:
 
                     st.error(
                         f"Σφάλμα: {exc}"
                     )
 
+
+        # ====================================================
+        # CREATE EMPLOYEE FROM HIRED CANDIDATE
+        # ====================================================
 
         if (
             selected_candidate.get(
@@ -2067,7 +2157,10 @@ elif page == "📋 Recruitment":
 
             if st.button(
                 "👥 Δημιουργία εργαζομένου + Onboarding",
-                key=f"hire_{selected_candidate['id']}",
+                key=(
+                    f"hire_"
+                    f"{selected_candidate['id']}"
+                ),
                 type="primary",
             ):
 
@@ -2096,7 +2189,6 @@ elif page == "📋 Recruitment":
                         st.warning(
                             "Ο εργαζόμενος υπάρχει ήδη και έχει ήδη Onboarding."
                         )
-
 
                     else:
 
@@ -2127,13 +2219,16 @@ elif page == "📋 Recruitment":
 
                     st.rerun()
 
-
                 except Exception as exc:
 
                     st.error(
                         f"Σφάλμα: {exc}"
                     )
 
+
+        # ====================================================
+        # HISTORY
+        # ====================================================
 
         with st.expander(
             "🕘 Ιστορικό υποψηφίου"
@@ -2151,17 +2246,21 @@ elif page == "📋 Recruitment":
                 history_df = pd.DataFrame(
                     [
                         {
-                            "Από": row.get(
-                                "old_status"
-                            )
-                            or "-",
+                            "Από": (
+                                row.get(
+                                    "old_status"
+                                )
+                                or "-"
+                            ),
                             "Σε": row.get(
                                 "new_status"
                             ),
-                            "Χρήστης": row.get(
-                                "changed_by"
-                            )
-                            or "-",
+                            "Χρήστης": (
+                                row.get(
+                                    "changed_by"
+                                )
+                                or "-"
+                            ),
                             "Ημερομηνία": safe_text(
                                 row.get(
                                     "changed_at"
@@ -2178,7 +2277,6 @@ elif page == "📋 Recruitment":
                     hide_index=True,
                     use_container_width=True,
                 )
-
 
             else:
 
@@ -2207,6 +2305,10 @@ elif page == "🚀 Onboarding":
     onboarding_rows = get_onboarding()
 
 
+    # ========================================================
+    # NEW ONBOARDING
+    # ========================================================
+
     st.subheader(
         "➕ Νέο Onboarding"
     )
@@ -2217,7 +2319,6 @@ elif page == "🚀 Onboarding":
         st.info(
             "Δεν υπάρχουν εργαζόμενοι."
         )
-
 
     else:
 
@@ -2243,14 +2344,14 @@ elif page == "🚀 Onboarding":
             )
 
 
-            selected_employee = (
-                employee_options[
-                    selected_label
-                ]
+            selected_employee = employee_options[
+                selected_label
+            ]
+
+
+            col1, col2 = st.columns(
+                2
             )
-
-
-            col1, col2 = st.columns(2)
 
 
             start_date = col1.date_input(
@@ -2280,11 +2381,9 @@ elif page == "🚀 Onboarding":
             )
 
 
-            create_button = (
-                st.form_submit_button(
-                    "🚀 Δημιουργία Onboarding",
-                    type="primary",
-                )
+            create_button = st.form_submit_button(
+                "🚀 Δημιουργία Onboarding",
+                type="primary",
             )
 
 
@@ -2307,7 +2406,6 @@ elif page == "🚀 Onboarding":
                     st.warning(
                         "Υπάρχει ήδη Onboarding για αυτόν τον εργαζόμενο."
                     )
-
 
                 else:
 
@@ -2334,7 +2432,6 @@ elif page == "🚀 Onboarding":
 
                         st.rerun()
 
-
                     except Exception as exc:
 
                         st.error(
@@ -2344,6 +2441,10 @@ elif page == "🚀 Onboarding":
 
     st.markdown("---")
 
+
+    # ========================================================
+    # ONBOARDING CHECKLIST
+    # ========================================================
 
     st.subheader(
         "📋 Onboarding Checklist"
@@ -2358,7 +2459,6 @@ elif page == "🚀 Onboarding":
         st.info(
             "Δεν υπάρχουν Onboarding."
         )
-
 
     else:
 
@@ -2390,8 +2490,8 @@ elif page == "🚀 Onboarding":
                 f"— {onboarding_status}"
             ):
 
-                m1, m2, m3, m4 = (
-                    st.columns(4)
+                m1, m2, m3, m4 = st.columns(
+                    4
                 )
 
 
@@ -2443,11 +2543,7 @@ elif page == "🚀 Onboarding":
                         deadline_value
                     )
 
-
-                    if (
-                        deadline_date
-                        < date.today()
-                    ):
+                    if deadline_date < date.today():
 
                         st.error(
                             "⚠️ Εκπρόθεσμο Onboarding"
@@ -2458,8 +2554,8 @@ elif page == "🚀 Onboarding":
                     f"onboarding_{row['id']}"
                 ):
 
-                    col1, col2 = (
-                        st.columns(2)
+                    col1, col2 = st.columns(
+                        2
                     )
 
 
@@ -2494,7 +2590,9 @@ elif page == "🚀 Onboarding":
                     )
 
 
-                    c1, c2 = st.columns(2)
+                    c1, c2 = st.columns(
+                        2
+                    )
 
 
                     contract = c1.checkbox(
@@ -2517,18 +2615,18 @@ elif page == "🚀 Onboarding":
                     )
 
 
-                    c3, c4 = st.columns(2)
+                    c3, c4 = st.columns(
+                        2
+                    )
 
 
-                    company_email = (
-                        c3.checkbox(
-                            "📧 Εταιρικό email",
-                            value=bool(
-                                row.get(
-                                    "email"
-                                )
-                            ),
-                        )
+                    company_email = c3.checkbox(
+                        "📧 Εταιρικό email",
+                        value=bool(
+                            row.get(
+                                "email"
+                            )
+                        ),
                     )
 
 
@@ -2542,18 +2640,18 @@ elif page == "🚀 Onboarding":
                     )
 
 
-                    c5, c6 = st.columns(2)
+                    c5, c6 = st.columns(
+                        2
+                    )
 
 
-                    system_access = (
-                        c5.checkbox(
-                            "🔐 Πρόσβαση στα συστήματα",
-                            value=bool(
-                                row.get(
-                                    "system_access"
-                                )
-                            ),
-                        )
+                    system_access = c5.checkbox(
+                        "🔐 Πρόσβαση στα συστήματα",
+                        value=bool(
+                            row.get(
+                                "system_access"
+                            )
+                        ),
                     )
 
 
@@ -2567,23 +2665,19 @@ elif page == "🚀 Onboarding":
                     )
 
 
-                    manager_meeting = (
-                        st.checkbox(
-                            "🤝 Συνάντηση με Manager",
-                            value=bool(
-                                row.get(
-                                    "manager_meeting"
-                                )
-                            ),
-                        )
+                    manager_meeting = st.checkbox(
+                        "🤝 Συνάντηση με Manager",
+                        value=bool(
+                            row.get(
+                                "manager_meeting"
+                            )
+                        ),
                     )
 
 
-                    save_onboarding = (
-                        st.form_submit_button(
-                            "💾 Αποθήκευση Onboarding",
-                            type="primary",
-                        )
+                    save_onboarding = st.form_submit_button(
+                        "💾 Αποθήκευση Onboarding",
+                        type="primary",
                     )
 
 
@@ -2630,7 +2724,6 @@ elif page == "🚀 Onboarding":
 
                             st.rerun()
 
-
                         except Exception as exc:
 
                             st.error(
@@ -2639,7 +2732,7 @@ elif page == "🚀 Onboarding":
 
 
 # ============================================================
-# LEAVES - HR
+# HR LEAVES
 # ============================================================
 
 elif (
@@ -2677,21 +2770,17 @@ elif (
                 "leave_form"
             ):
 
-                selected_label = (
-                    st.selectbox(
-                        "Εργαζόμενος",
-                        list(
-                            employee_options.keys()
-                        ),
-                    )
+                selected_label = st.selectbox(
+                    "Εργαζόμενος",
+                    list(
+                        employee_options.keys()
+                    ),
                 )
 
 
-                selected_employee = (
-                    employee_options[
-                        selected_label
-                    ]
-                )
+                selected_employee = employee_options[
+                    selected_label
+                ]
 
 
                 leave_type = st.selectbox(
@@ -2705,7 +2794,9 @@ elif (
                 )
 
 
-                c1, c2 = st.columns(2)
+                c1, c2 = st.columns(
+                    2
+                )
 
 
                 start_date = c1.date_input(
@@ -2725,11 +2816,9 @@ elif (
                 )
 
 
-                submit = (
-                    st.form_submit_button(
-                        "💾 Καταχώρηση",
-                        type="primary",
-                    )
+                submit = st.form_submit_button(
+                    "💾 Καταχώρηση",
+                    type="primary",
                 )
 
 
@@ -2740,7 +2829,6 @@ elif (
                         st.error(
                             "Λάθος ημερομηνίες."
                         )
-
 
                     else:
 
@@ -2768,7 +2856,6 @@ elif (
                             )
 
                             st.rerun()
-
 
                         except Exception as exc:
 
@@ -2842,13 +2929,19 @@ elif (
                     in statuses
                     else 0
                 ),
-                key=f"leave_status_{leave['id']}",
+                key=(
+                    f"leave_status_"
+                    f"{leave['id']}"
+                ),
             )
 
 
             if st.button(
                 "💾 Ενημέρωση",
-                key=f"leave_{leave['id']}",
+                key=(
+                    f"leave_"
+                    f"{leave['id']}"
+                ),
             ):
 
                 try:
@@ -2866,7 +2959,6 @@ elif (
                     )
 
                     st.rerun()
-
 
                 except Exception as exc:
 
@@ -2897,16 +2989,19 @@ elif page == "👤 Το προφίλ μου":
             "Δεν βρέθηκε εργαζόμενος με αυτό το email."
         )
 
-
     else:
 
-        c1, c2, c3 = st.columns(3)
+        c1, c2, c3 = st.columns(
+            3
+        )
 
 
         c1.metric(
             "Ονοματεπώνυμο",
-            f"{employee.get('first_name')} "
-            f"{employee.get('last_name')}",
+            (
+                f"{employee.get('first_name')} "
+                f"{employee.get('last_name')}"
+            ),
         )
 
 
@@ -2968,7 +3063,6 @@ elif page == "🏖️ Οι άδειές μου":
             "Δεν βρέθηκε ο εργαζόμενος."
         )
 
-
     else:
 
         with st.expander(
@@ -2990,7 +3084,9 @@ elif page == "🏖️ Οι άδειές μου":
                 )
 
 
-                c1, c2 = st.columns(2)
+                c1, c2 = st.columns(
+                    2
+                )
 
 
                 start_date = c1.date_input(
@@ -3010,11 +3106,9 @@ elif page == "🏖️ Οι άδειές μου":
                 )
 
 
-                submit = (
-                    st.form_submit_button(
-                        "📨 Υποβολή",
-                        type="primary",
-                    )
+                submit = st.form_submit_button(
+                    "📨 Υποβολή",
+                    type="primary",
                 )
 
 
@@ -3025,7 +3119,6 @@ elif page == "🏖️ Οι άδειές μου":
                         st.error(
                             "Λάθος ημερομηνίες."
                         )
-
 
                     else:
 
@@ -3053,7 +3146,6 @@ elif page == "🏖️ Οι άδειές μου":
                             )
 
                             st.rerun()
-
 
                         except Exception as exc:
 
@@ -3106,7 +3198,6 @@ elif page == "🏖️ Οι άδειές μου":
                 use_container_width=True,
             )
 
-
         else:
 
             st.info(
@@ -3143,7 +3234,6 @@ elif page == "🤖 AI Assistant":
             st.warning(
                 "Γράψε πρώτα μια ερώτηση."
             )
-
 
         else:
 
