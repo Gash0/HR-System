@@ -453,10 +453,46 @@ def create_onboarding_table():
             training INTEGER DEFAULT 0,
             manager_meeting INTEGER DEFAULT 0,
             start_date TEXT,
+            responsible TEXT,
+            deadline TEXT,
+            status TEXT DEFAULT 'Δεν ξεκίνησε',
             FOREIGN KEY (employee_id)
                 REFERENCES employees(id)
                 ON DELETE CASCADE
         )
+    """)
+
+    cursor.execute("""
+        ALTER TABLE onboarding
+        ADD COLUMN IF NOT EXISTS responsible TEXT
+    """)
+
+    cursor.execute("""
+        ALTER TABLE onboarding
+        ADD COLUMN IF NOT EXISTS deadline TEXT
+    """)
+
+    cursor.execute("""
+        ALTER TABLE onboarding
+        ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'Δεν ξεκίνησε'
+    """)
+
+    cursor.execute("""
+        UPDATE onboarding
+        SET status = CASE
+            WHEN COALESCE(contract, 0) + COALESCE(documents, 0) +
+                 COALESCE(email, 0) + COALESCE(equipment, 0) +
+                 COALESCE(system_access, 0) + COALESCE(training, 0) +
+                 COALESCE(manager_meeting, 0) = 7
+                THEN 'Ολοκληρώθηκε'
+            WHEN COALESCE(contract, 0) + COALESCE(documents, 0) +
+                 COALESCE(email, 0) + COALESCE(equipment, 0) +
+                 COALESCE(system_access, 0) + COALESCE(training, 0) +
+                 COALESCE(manager_meeting, 0) > 0
+                THEN 'Σε εξέλιξη'
+            ELSE 'Δεν ξεκίνησε'
+        END
+        WHERE status IS NULL OR status = ''
     """)
 
     connection.commit()
@@ -464,19 +500,30 @@ def create_onboarding_table():
     connection.close()
 
 
-def create_onboarding(employee_id, start_date):
+def create_onboarding(
+    employee_id,
+    start_date,
+    responsible=None,
+    deadline=None,
+):
     connection = get_connection()
     cursor = connection.cursor()
 
     cursor.execute("""
         INSERT INTO onboarding (
             employee_id,
-            start_date
+            start_date,
+            responsible,
+            deadline,
+            status
         )
-        VALUES (%s, %s)
+        VALUES (%s, %s, %s, %s, %s)
     """, (
         employee_id,
         start_date,
+        responsible,
+        deadline,
+        'Δεν ξεκίνησε',
     ))
 
     connection.commit()
@@ -516,9 +563,28 @@ def update_onboarding(
     system_access,
     training,
     manager_meeting,
+    responsible=None,
+    deadline=None,
 ):
     connection = get_connection()
     cursor = connection.cursor()
+
+    completed_tasks = sum([
+        int(bool(contract)),
+        int(bool(documents)),
+        int(bool(email)),
+        int(bool(equipment)),
+        int(bool(system_access)),
+        int(bool(training)),
+        int(bool(manager_meeting)),
+    ])
+
+    if completed_tasks == 7:
+        status = 'Ολοκληρώθηκε'
+    elif completed_tasks > 0:
+        status = 'Σε εξέλιξη'
+    else:
+        status = 'Δεν ξεκίνησε'
 
     cursor.execute("""
         UPDATE onboarding
@@ -529,7 +595,10 @@ def update_onboarding(
             equipment = %s,
             system_access = %s,
             training = %s,
-            manager_meeting = %s
+            manager_meeting = %s,
+            responsible = %s,
+            deadline = %s,
+            status = %s
         WHERE id = %s
     """, (
         contract,
@@ -539,6 +608,9 @@ def update_onboarding(
         system_access,
         training,
         manager_meeting,
+        responsible,
+        deadline,
+        status,
         onboarding_id,
     ))
 
