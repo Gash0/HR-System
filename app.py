@@ -25,6 +25,8 @@ from database import (
     get_leaves,
     update_leave_status,
     get_hr_statistics,
+    get_time_to_hire_stats,
+
 )
 
 
@@ -306,6 +308,7 @@ if page == "📊 Dashboard":
 
     leaves = get_leaves()
 
+    time_to_hire_data = get_time_to_hire_stats()    
 
     # ========================================================
     # WORKFORCE KPIs
@@ -545,6 +548,90 @@ if page == "📊 Dashboard":
     rec4.metric(
         "Hire Rate",
         f"{hire_rate}%",
+
+    )
+
+    # ========================================================
+# TIME TO HIRE
+# ========================================================
+
+st.write(
+    "### ⏱️ Time to Hire"
+)
+
+if time_to_hire_data:
+
+    average_time_to_hire = round(
+        sum(
+            item["days_to_hire"]
+            for item in time_to_hire_data
+        )
+        / len(time_to_hire_data)
+    )
+
+    fastest_hire = min(
+        item["days_to_hire"]
+        for item in time_to_hire_data
+    )
+
+    slowest_hire = max(
+        item["days_to_hire"]
+        for item in time_to_hire_data
+    )
+
+    t1, t2, t3 = st.columns(3)
+
+    t1.metric(
+        "Μέσο Time to Hire",
+        f"{average_time_to_hire} ημέρες",
+    )
+
+    t2.metric(
+        "Ταχύτερη πρόσληψη",
+        f"{fastest_hire} ημέρες",
+    )
+
+    t3.metric(
+        "Μεγαλύτερο Time to Hire",
+        f"{slowest_hire} ημέρες",
+    )
+
+    time_to_hire_df = pd.DataFrame(
+        [
+            {
+                "Υποψήφιος": (
+                    f"{item['first_name']} "
+                    f"{item['last_name']}"
+                ),
+                "Θέση": item["position"] or "-",
+                "Ημερομηνία αίτησης": (
+                    item["application_date"].strftime(
+                        "%d/%m/%Y"
+                    )
+                ),
+                "Ημερομηνία πρόσληψης": (
+                    item["hired_date"].strftime(
+                        "%d/%m/%Y"
+                    )
+                ),
+                "Time to Hire": (
+                    f"{item['days_to_hire']} ημέρες"
+                ),
+            }
+            for item in time_to_hire_data
+        ]
+    )
+
+    st.dataframe(
+        time_to_hire_df,
+        use_container_width=True,
+        hide_index=True,
+    )
+
+else:
+
+    st.info(
+        "Δεν υπάρχουν ακόμη αρκετά δεδομένα για υπολογισμό Time to Hire."
     )
 
 
@@ -1171,7 +1258,7 @@ if page == "📊 Dashboard":
 # EMPLOYEES
 # ============================================================
 
-elif page == "👥 Εργαζόμενοι":
+if page == "👥 Εργαζόμενοι":
 
     st.title(
         "👥 Εργαζόμενοι"

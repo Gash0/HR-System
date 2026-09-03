@@ -1,6 +1,7 @@
 
 import streamlit as st
 import psycopg
+from datetime import datetime
 from psycopg.rows import dict_row
 
 
@@ -869,3 +870,88 @@ def create_employee_from_candidate(candidate_id):
     connection.close()
 
     return employee_id
+
+def get_time_to_hire_stats():
+    """
+    Υπολογίζει Time to Hire από:
+    application_date -> ημερομηνία που ο candidate έγινε 'Προσλήφθηκε'
+    """
+
+    conn = get_connection()
+
+    try:
+        with conn.cursor() as cur:
+
+            cur.execute(
+                """
+                SELECT
+                    c.id,
+                    c.first_name,
+                    c.last_name,
+                    c.position,
+                    c.application_date,
+                    MIN(ch.changed_at) AS hired_at
+                FROM candidates c
+                JOIN candidate_history ch
+                    ON ch.candidate_id = c.id
+                WHERE ch.new_status = 'Προσλήφθηκε'
+                GROUP BY
+                    c.id,
+                    c.first_name,
+                    c.last_name,
+                    c.position,
+                    c.application_date
+                ORDER BY hired_at DESC
+                """
+            )
+
+            rows = cur.fetchall()
+
+        results = []
+
+        for row in rows:
+
+            application_date = row.get("application_date")
+            hired_at = row.get("hired_at")
+
+            if not application_date or not hired_at:
+                continue
+
+            if isinstance(application_date, str):
+                application_date_obj = datetime.strptime(
+                    application_date[:10],
+                    "%Y-%m-%d",
+                ).date()
+            else:
+                application_date_obj = application_date
+
+            if isinstance(hired_at, datetime):
+                hired_date_obj = hired_at.date()
+            elif isinstance(hired_at, str):
+                hired_date_obj = datetime.fromisoformat(
+                    hired_at
+                ).date()
+            else:
+                hired_date_obj = hired_at
+
+            days_to_hire = (
+                hired_date_obj - application_date_obj
+            ).days
+
+            if days_to_hire >= 0:
+                results.append(
+                    {
+                        "id": row.get("id"),
+                        "first_name": row.get("first_name"),
+                        "last_name": row.get("last_name"),
+                        "position": row.get("position"),
+                        "application_date": application_date_obj,
+                        "hired_date": hired_date_obj,
+                        "days_to_hire": days_to_hire,
+                    }
+                )
+
+        return results
+
+    finally:
+        conn.close()
